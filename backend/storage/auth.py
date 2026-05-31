@@ -49,8 +49,10 @@ async def init_auth_db():
         cursor = await db.execute("SELECT COUNT(*) FROM users")
         row = await cursor.fetchone()
         if row[0] == 0:
-            await db.execute("INSERT OR IGNORE INTO users (username, display_name) VALUES (?, ?)", ("noemi", "Noemí"))
+            await db.execute("INSERT OR IGNORE INTO users (username, display_name) VALUES (?, ?)", ("naomi", "Naomi"))
             await db.execute("INSERT OR IGNORE INTO users (username, display_name) VALUES (?, ?)", ("hector", "Héctor"))
+            await db.commit()
+            await db.execute("UPDATE users SET username = 'naomi', display_name = 'Naomi' WHERE username = 'noemi'")
             await db.commit()
 
 
