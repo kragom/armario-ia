@@ -12,6 +12,7 @@ from storage.auth import (
     create_session,
     get_session_user,
     delete_session,
+    change_password as storage_change_password,
 )
 
 router = APIRouter()
@@ -25,6 +26,11 @@ class LoginRequest(BaseModel):
 class SetPasswordRequest(BaseModel):
     username: str
     password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 class AuthResponse(BaseModel):
@@ -105,3 +111,21 @@ async def logout(authorization: Optional[str] = Header(None)):
         token = authorization.replace("Bearer ", "")
         await delete_session(token)
     return {"message": "Sesión cerrada"}
+
+
+@router.post("/auth/change-password")
+async def change_password(req: ChangePasswordRequest, authorization: Optional[str] = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="No autorizado")
+    token = authorization.replace("Bearer ", "")
+    user_id = await get_session_user(token)
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Sesión inválida")
+
+    if len(req.new_password) < 1:
+        raise HTTPException(status_code=400, detail="La contraseña no puede estar vacía")
+
+    ok = await storage_change_password(user_id, req.current_password, req.new_password)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+    return {"message": "Contraseña cambiada correctamente"}

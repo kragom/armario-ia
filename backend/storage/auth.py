@@ -95,6 +95,19 @@ async def verify_login(username: str, password: str) -> Optional[dict]:
     return {"error": "Invalid password"}
 
 
+async def change_password(user_id: int, current_password: str, new_password: str) -> bool:
+    user = await get_user_by_id(user_id)
+    if user is None:
+        return False
+    if user["has_set_password"] and not _verify_password(current_password, user["password_hash"]):
+        return False
+    h = _hash_password(new_password)
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE users SET password_hash = ?, has_set_password = 1 WHERE id = ?", (h, user_id))
+        await db.commit()
+    return True
+
+
 async def create_session(user_id: int) -> str:
     token = secrets.token_urlsafe(32)
     async with aiosqlite.connect(DB_PATH) as db:

@@ -93,6 +93,34 @@ const Settings = ({ isOpen, onClose, onSave }) => {
     const [searchingLocations, setSearchingLocations] = useState(false)
     const [showLocationDropdown, setShowLocationDropdown] = useState(false)
     const locationPickerRef = useRef(null)
+    const [pwCurrent, setPwCurrent] = useState('')
+    const [pwNew, setPwNew] = useState('')
+    const [pwLoading, setPwLoading] = useState(false)
+    const [pwSuccess, setPwSuccess] = useState('')
+    const [pwError, setPwError] = useState('')
+
+    const handleChangePassword = async () => {
+        setPwSuccess('')
+        setPwError('')
+        setPwLoading(true)
+        try {
+            const res = await authFetch(`${API_BASE}/auth/change-password`, {
+                method: 'POST',
+                body: JSON.stringify({ current_password: pwCurrent, new_password: pwNew }),
+            })
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.detail || 'Error al cambiar contraseña')
+            }
+            setPwSuccess('Contraseña cambiada correctamente')
+            setPwCurrent('')
+            setPwNew('')
+        } catch (e) {
+            setPwError(e.message)
+        } finally {
+            setPwLoading(false)
+        }
+    }
 
     useEffect(() => {
         if (isOpen) {
@@ -465,6 +493,44 @@ const Settings = ({ isOpen, onClose, onSave }) => {
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-zinc-200/60 dark:bg-zinc-700/60 w-full" />
+
+                    {/* Change Password */}
+                    <div className="space-y-3">
+                        <div className="text-xs font-bold tracking-widest text-zinc-400 uppercase">Contraseña</div>
+
+                        {pwSuccess && (
+                            <p className="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">{pwSuccess}</p>
+                        )}
+                        {pwError && (
+                            <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{pwError}</p>
+                        )}
+
+                        <div className="flex gap-2">
+                            <input
+                                type="password"
+                                className="input-field flex-1"
+                                placeholder="Contraseña actual"
+                                value={pwCurrent}
+                                onChange={e => setPwCurrent(e.target.value)}
+                            />
+                            <input
+                                type="password"
+                                className="input-field flex-1"
+                                placeholder="Nueva contraseña"
+                                value={pwNew}
+                                onChange={e => setPwNew(e.target.value)}
+                            />
+                            <button
+                                className="px-4 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer whitespace-nowrap"
+                                disabled={pwLoading || !pwCurrent || !pwNew}
+                                onClick={handleChangePassword}
+                            >
+                                {pwLoading ? '...' : 'Cambiar'}
+                            </button>
                         </div>
                     </div>
 
