@@ -580,7 +580,7 @@ const Settings = ({ isOpen, onClose, onSave }) => {
                                 {[
                                     { name: 'OpenAI', base: 'https://api.openai.com/v1', model: 'gpt-4o' },
                                     { name: 'Anthropic', base: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet-latest' },
-                                    { name: 'Google', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.0-flash-exp' },
+                                    { name: 'Google', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.0-flash' },
                                     { name: 'DeepSeek', base: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
                                 ].map(p => (
                                     <button

@@ -2,6 +2,7 @@
 配置存储 - 使用 JSON 文件持久化配置
 """
 import json
+import os
 from pathlib import Path
 from typing import Optional
 from domain.config import LLMConfig
@@ -19,7 +20,7 @@ def load_config() -> LLMConfig:
     if not CONFIG_FILE.exists():
         _CONFIG_CACHE = LLMConfig()
         _CONFIG_MTIME = None
-        return _CONFIG_CACHE
+        return _apply_env_overrides(_CONFIG_CACHE)
 
     try:
         mtime = CONFIG_FILE.stat().st_mtime
@@ -34,11 +35,20 @@ def load_config() -> LLMConfig:
             data = json.load(f)
         _CONFIG_CACHE = LLMConfig(**data)
         _CONFIG_MTIME = mtime
-        return _CONFIG_CACHE
+        return _apply_env_overrides(_CONFIG_CACHE)
     except Exception:
         _CONFIG_CACHE = LLMConfig()
         _CONFIG_MTIME = mtime
-        return _CONFIG_CACHE
+        return _apply_env_overrides(_CONFIG_CACHE)
+
+
+def _apply_env_overrides(config: LLMConfig) -> LLMConfig:
+    """Aplicar variables de entorno como fallback para API keys"""
+    if not config.api_key and os.environ.get("GEMINI_API_KEY"):
+        config.api_key = os.environ["GEMINI_API_KEY"]
+    if not config.removebg_api_key and os.environ.get("REMOVEBG_API_KEY"):
+        config.removebg_api_key = os.environ["REMOVEBG_API_KEY"]
+    return config
 
 
 def save_config(config: LLMConfig) -> None:

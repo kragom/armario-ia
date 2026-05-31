@@ -6,16 +6,16 @@ from typing import Optional, List, Literal
 
 
 class LLMConfig(BaseModel):
-    """LLM API 配置"""
-    api_base: str = "https://x666.me/v1"
-    api_key: str = "sk-F8oPcW8b5pgRtrmnR0ymh6yxCG6yCW3Gft7H3x792r3kn4Fi"
-    model: str = "gemini-flash-latest"
-    # remove.bg 配置
-    removebg_api_key: str = "mcigdPJZy9oU6c2SMiEwj9VA"
-    bg_removal_method: Literal["local", "removebg"] = "removebg"  # 本地 rembg 或 remove.bg API
-    # 默认天气城市（用于首页与推荐页）
-    weather_location: str = "上海, 上海市, 中国"
-    # 用户星座配置（用于首页运势）
+    """LLM API configuration"""
+    api_base: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    api_key: str = ""
+    model: str = "gemini-2.0-flash"
+    # remove.bg config
+    removebg_api_key: str = ""
+    bg_removal_method: Literal["local", "removebg"] = "local"
+    # Ciudad por defecto para el clima
+    weather_location: str = "Madrid, Comunidad de Madrid, España"
+    # Signo zodiacal del usuario
     zodiac_sign: str = ""
     
     
