@@ -18,7 +18,13 @@ export function AuthProvider({ children }) {
     fetch(`${API_BASE}/auth/check`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (!r.ok) {
+          localStorage.removeItem('auth_token')
+          return null
+        }
+        return r.json()
+      })
       .then(u => setUser(u))
       .catch(() => localStorage.removeItem('auth_token'))
       .finally(() => setLoading(false))
