@@ -1,4 +1,4 @@
-export const API_ORIGIN = `http://${window.location.hostname}:7860`
+export const API_ORIGIN = window.location.origin
 export const API_BASE = `${API_ORIGIN}/api`
 
 export function toImageUrl(path) {
