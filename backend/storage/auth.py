@@ -8,8 +8,6 @@ from typing import Optional
 
 from storage.db import DB_PATH
 
-NAOMI_RESET_MARKER = DB_PATH.parent / ".naomi_password_reset_20260531"
-
 
 def _hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
@@ -64,21 +62,6 @@ async def init_auth_db():
             await db.commit()
             await db.execute("UPDATE users SET username = 'naomi', display_name = 'Naomi' WHERE username = 'noemi'")
             await db.commit()
-
-        if not NAOMI_RESET_MARKER.exists():
-            await db.execute(
-                "UPDATE users SET password_hash = '', has_set_password = 0 WHERE username = ?",
-                ("naomi",),
-            )
-            await db.execute(
-                """
-                DELETE FROM sessions
-                WHERE user_id IN (SELECT id FROM users WHERE username = ?)
-                """,
-                ("naomi",),
-            )
-            await db.commit()
-            NAOMI_RESET_MARKER.write_text("done", encoding="utf-8")
 
 
 async def get_user(username: str) -> Optional[dict]:
