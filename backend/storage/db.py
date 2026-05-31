@@ -30,7 +30,8 @@ async def init_db():
 
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(CLOTHES_TABLE_SQL)
-        await db.execute(CLOTHES_INDEX_SQL)
+        for stmt in CLOTHES_INDEX_SQL:
+            await db.execute(stmt)
         await db.execute(HOROSCOPE_RECORDS_TABLE_SQL)
         await db.execute(HOROSCOPE_RECORDS_INDEX_SQL)
         try:

@@ -23,10 +23,10 @@ CREATE TABLE IF NOT EXISTS clothes (
 """
 
 # 创建索引用于快速查询
-CLOTHES_INDEX_SQL = """
-CREATE INDEX IF NOT EXISTS idx_clothes_category ON clothes(category);
-CREATE INDEX IF NOT EXISTS idx_clothes_user ON clothes(user_id);
-"""
+CLOTHES_INDEX_SQL = [
+    "CREATE INDEX IF NOT EXISTS idx_clothes_category ON clothes(category)",
+    "CREATE INDEX IF NOT EXISTS idx_clothes_user ON clothes(user_id)",
+]
 
 # Migración para añadir user_id a tablas existentes
 MIGRATE_ADD_USER_ID_SQL = """
