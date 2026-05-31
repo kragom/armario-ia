@@ -20,12 +20,8 @@ def _verify_password(password: str, stored: str) -> bool:
     return h == hashlib.sha256((salt + password).encode()).hexdigest()
 
 
-async def _get_db():
-    return await aiosqlite.connect(DB_PATH)
-
-
 async def init_auth_db():
-    async with await _get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +55,7 @@ async def init_auth_db():
 
 
 async def get_user(username: str) -> Optional[dict]:
-    async with await _get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute("SELECT * FROM users WHERE username = ?", (username,))
         row = await cursor.fetchone()
@@ -69,7 +65,7 @@ async def get_user(username: str) -> Optional[dict]:
 
 
 async def get_user_by_id(user_id: int) -> Optional[dict]:
-    async with await _get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         row = await cursor.fetchone()
@@ -80,7 +76,7 @@ async def get_user_by_id(user_id: int) -> Optional[dict]:
 
 async def set_user_password(username: str, password: str) -> bool:
     h = _hash_password(password)
-    async with await _get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE users SET password_hash = ?, has_set_password = 1 WHERE username = ?", (h, username))
         await db.commit()
     return True
@@ -99,14 +95,14 @@ async def verify_login(username: str, password: str) -> Optional[dict]:
 
 async def create_session(user_id: int) -> str:
     token = secrets.token_urlsafe(32)
-    async with await _get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("INSERT INTO sessions (user_id, token) VALUES (?, ?)", (user_id, token))
         await db.commit()
     return token
 
 
 async def get_session_user(token: str) -> Optional[int]:
-    async with await _get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute("SELECT user_id FROM sessions WHERE token = ?", (token,))
         row = await cursor.fetchone()
@@ -116,6 +112,6 @@ async def get_session_user(token: str) -> Optional[int]:
 
 
 async def delete_session(token: str):
-    async with await _get_db() as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM sessions WHERE token = ?", (token,))
         await db.commit()
