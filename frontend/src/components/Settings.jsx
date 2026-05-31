@@ -7,8 +7,6 @@ import { API_BASE, authFetch } from '../utils/api'
 const LANGUAGES = [
     { code: 'es', label: 'Español' },
     { code: 'en', label: 'English' },
-    { code: 'zh', label: '中文' },
-    { code: 'ja', label: '日本語' }
 ]
 
 const ZODIAC_SIGNS = [

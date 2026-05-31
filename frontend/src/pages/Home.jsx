@@ -346,7 +346,7 @@ export default function Home() {
                         <div className="grid grid-cols-3 gap-2 mt-4">
                             <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 p-2.5">
                                 <div className="text-[10px] uppercase tracking-wide text-zinc-500">{t('home.mood')}</div>
-                                <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 mt-1 truncate">{horoscope?.mood || '--'}</div>
+                                <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 mt-1">{horoscope?.mood || '--'}</div>
                             </div>
                             <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 p-2.5">
                                 <div className="text-[10px] uppercase tracking-wide text-zinc-500">{t('home.luckyColor')}</div>

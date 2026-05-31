@@ -2,9 +2,7 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 
-import zh from './locales/zh.json'
 import en from './locales/en.json'
-import ja from './locales/ja.json'
 import es from './locales/es.json'
 
 i18n
@@ -12,12 +10,10 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      zh: { translation: zh },
       en: { translation: en },
-      ja: { translation: ja },
       es: { translation: es }
     },
-    fallbackLng: 'en',
+    fallbackLng: 'es',
     detection: {
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],

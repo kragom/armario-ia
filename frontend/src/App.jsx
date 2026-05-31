@@ -47,7 +47,7 @@ function App() {
           <Route path="/clothes/:id" element={<ProtectedRoute><ClothesDetail /></ProtectedRoute>} />
           <Route path="/outfit" element={<ProtectedRoute><Outfit /></ProtectedRoute>} />
           <Route path="/recommendation" element={<ProtectedRoute><Recommendation /></ProtectedRoute>} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <TabBar />
