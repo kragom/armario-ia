@@ -44,13 +44,6 @@ async def get_outfit_recommendation(
     goal: Optional[str] = Query(default=None, description="可选，用户本次穿搭目标/场景"),
     user_id: int = Depends(get_current_user_id),
 ):
-    获取AI穿搭推荐
-    
-    参数:
-        location: 城市名（如 上海、Tokyo）或 经纬度坐标（如 31.23,121.47）
-    返回:
-        天气信息 + AI推荐文本 + 推荐的衣服和裤子
-    """
     normalized_location, validation_error = normalize_location_request(
         location=location,
         city=city,
