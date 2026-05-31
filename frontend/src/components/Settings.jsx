@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useTheme } from '../contexts/ThemeContext'
 import { Sun, Moon, Globe, Sparkles, MapPin } from 'lucide-react'
 import { API_BASE, authFetch } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const LANGUAGES = [
     { code: 'es', label: 'Español' },
@@ -71,21 +72,28 @@ const isCompleteLocationInput = (location) => {
 const Settings = ({ isOpen, onClose, onSave }) => {
     const { t, i18n } = useTranslation()
     const { theme, toggleTheme } = useTheme()
+    const { user } = useAuth()
     const [config, setConfig] = useState({
-        api_base: 'https://api.openai.com/v1',
         api_key: '',
-        model: 'gpt-4o',
+        api_base: '',
+        model: '',
         removebg_api_key: '',
         bg_removal_method: 'local',
-        weather_location: DEFAULT_LOCATION,
-        zodiac_sign: ''
+        weather_location: '',
+        zodiac_sign: '',
+        userZodiac: ''
     })
+
+    const [userWeatherLocation, setUserWeatherLocation] = useState('')
+    const [userZodiac, setUserZodiac] = useState('')
     const [models, setModels] = useState([])
     const [loading, setLoading] = useState(false)
     const [testing, setTesting] = useState(false)
     const [testResult, setTestResult] = useState(null)
     const [hasExistingKey, setHasExistingKey] = useState(false)
     const [hasRemoveBgKey, setHasRemoveBgKey] = useState(false)
+    const [apiKeysCount, setApiKeysCount] = useState(0)
+    const [additionalKeys, setAdditionalKeys] = useState('')
     const [showModelSelect, setShowModelSelect] = useState(false)
     const [locationSuggestions, setLocationSuggestions] = useState([])
     const [searchingLocations, setSearchingLocations] = useState(false)
@@ -214,19 +222,31 @@ const Settings = ({ isOpen, onClose, onSave }) => {
 
     const fetchConfig = async (signal) => {
         try {
-            const response = await authFetch(`${API_BASE}/config`, { signal })
-            if (response.ok) {
-                const data = await response.json()
+            const [configRes, profileRes] = await Promise.all([
+                authFetch(`${API_BASE}/config`, { signal }),
+                authFetch(`${API_BASE}/user/profile`, { signal }),
+            ])
+            if (configRes.ok) {
+                const data = await configRes.json()
                 setConfig(prev => ({
                     ...prev,
                     api_base: data.api_base || 'https://api.openai.com/v1',
                     model: data.model || 'gpt-4o',
                     bg_removal_method: data.bg_removal_method || 'local',
-                    weather_location: data.weather_location || DEFAULT_LOCATION,
-                    zodiac_sign: data.zodiac_sign || ''
                 }))
                 setHasExistingKey(data.has_api_key)
                 setHasRemoveBgKey(data.has_removebg_key)
+                setApiKeysCount(data.api_keys_count || 0)
+            }
+            if (profileRes.ok) {
+                const profile = await profileRes.json()
+                setUserZodiac(profile.zodiac_sign || '')
+                setUserWeatherLocation(profile.weather_location || DEFAULT_LOCATION)
+                setConfig(prev => ({
+                    ...prev,
+                    zodiac_sign: profile.zodiac_sign || '',
+                    weather_location: profile.weather_location || DEFAULT_LOCATION,
+                }))
             }
         } catch (error) {
             if (error.name !== 'AbortError') {
@@ -294,17 +314,46 @@ const Settings = ({ isOpen, onClose, onSave }) => {
                 return false
             }
 
+            // Guardar perfil del usuario (signo zodiacal + ubicación climática)
+            const profileChanged = config.zodiac_sign !== userZodiac || normalizedLocation !== userWeatherLocation
+            if (profileChanged) {
+                const profileRes = await authFetch(`${API_BASE}/user/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        zodiac_sign: config.zodiac_sign,
+                        weather_location: normalizedLocation,
+                    }),
+                })
+                if (!profileRes.ok) {
+                    setTestResult({
+                        success: false,
+                        message: t('settings.defaultCityFormatError')
+                    })
+                    return false
+                }
+                setUserZodiac(config.zodiac_sign)
+                setUserWeatherLocation(normalizedLocation)
+            }
+
             const payload = {
                 api_base: config.api_base,
                 model: config.model,
                 bg_removal_method: config.bg_removal_method,
-                weather_location: normalizedLocation,
-                zodiac_sign: config.zodiac_sign
             }
 
-            if (config.api_key) {
-                payload.api_key = config.api_key
+            // Enviar lista completa de API keys si el usuario las modificó
+            if (additionalKeys.trim() || config.api_key) {
+                const allKeys = []
+                if (config.api_key) allKeys.push(config.api_key)
+                if (additionalKeys.trim()) {
+                    const extras = additionalKeys.split('\n').map(k => k.trim()).filter(Boolean)
+                    allKeys.push(...extras)
+                }
+                payload.api_keys = allKeys
+                payload.api_key = config.api_key || allKeys[0] || ''
             }
+
             if (config.removebg_api_key) {
                 payload.removebg_api_key = config.removebg_api_key
             }
@@ -492,6 +541,96 @@ const Settings = ({ isOpen, onClose, onSave }) => {
                                 )}
                             </div>
                         </div>
+                    </div>
+
+                    <div className="h-px bg-zinc-200/60 dark:bg-zinc-700/60 w-full" />
+
+                    {/* AI Provider Section */}
+                    <div className="space-y-4">
+                        <div className="text-xs font-bold tracking-widest text-zinc-400 uppercase">{t('settings.llmSection')}</div>
+
+                        {testResult && (
+                            <p className={`text-xs px-3 py-2 rounded-lg ${testResult.success ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`}>
+                                {testResult.message}
+                            </p>
+                        )}
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('settings.apiBaseLabel')}</label>
+                            <input
+                                type="text"
+                                className="input-field"
+                                value={config.api_base}
+                                onChange={e => setConfig(prev => ({ ...prev, api_base: e.target.value }))}
+                                placeholder="https://api.openai.com/v1"
+                            />
+                            <p className="text-xs text-zinc-400">{t('settings.apiBaseHint')}</p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex justify-between">
+                                {t('settings.apiKeyLabel')}
+                                {hasExistingKey && !config.api_key && (
+                                    <span className="text-green-500 font-normal text-xs bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded">{t('settings.configured')}</span>
+                                )}
+                            </label>
+                            <input
+                                type="password"
+                                className="input-field font-mono"
+                                value={config.api_key}
+                                onChange={e => setConfig(prev => ({ ...prev, api_key: e.target.value }))}
+                                placeholder={hasExistingKey ? `•••••••• (${t('settings.keepEmpty')})` : ''}
+                            />
+                            {apiKeysCount > 1 && (
+                                <p className="text-xs text-zinc-500">{apiKeysCount} claves configuradas (rotación automática)</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                Claves adicionales (una por línea)
+                            </label>
+                            <textarea
+                                className="input-field font-mono text-xs min-h-[60px] resize-y"
+                                value={additionalKeys}
+                                onChange={e => setAdditionalKeys(e.target.value)}
+                                placeholder="AIzaSy...&#10;AIzaSy..."
+                                rows={3}
+                            />
+                            <p className="text-xs text-zinc-400">Cuando una clave alcanza su cuota, el sistema usa la siguiente automáticamente</p>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button
+                                className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                                onClick={fetchModels}
+                                disabled={loading}
+                            >
+                                {loading ? t('settings.loading') || '...' : 'Cargar Modelos'}
+                            </button>
+                            <button
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${testing ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:opacity-90'}`}
+                                onClick={handleTestConnection}
+                                disabled={testing}
+                            >
+                                {testing ? '...' : t('settings.testConnection')}
+                            </button>
+                        </div>
+
+                        {showModelSelect && models.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Modelo</label>
+                                <select
+                                    className="input-field appearance-none"
+                                    value={config.model}
+                                    onChange={e => setConfig(prev => ({ ...prev, model: e.target.value }))}
+                                >
+                                    {models.map(m => (
+                                        <option key={m.id} value={m.id}>{m.name || m.id}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     <div className="h-px bg-zinc-200/60 dark:bg-zinc-700/60 w-full" />

@@ -46,6 +46,9 @@ def _apply_env_overrides(config: LLMConfig) -> LLMConfig:
     """Aplicar variables de entorno como fallback para API keys"""
     if not config.api_key and os.environ.get("GEMINI_API_KEY"):
         config.api_key = os.environ["GEMINI_API_KEY"]
+    if not config.api_keys and os.environ.get("GEMINI_API_KEYS"):
+        raw = os.environ["GEMINI_API_KEYS"]
+        config.api_keys = [k.strip() for k in raw.replace("\n", ",").split(",") if k.strip()]
     if not config.removebg_api_key and os.environ.get("REMOVEBG_API_KEY"):
         config.removebg_api_key = os.environ["REMOVEBG_API_KEY"]
     return config
@@ -67,7 +70,8 @@ def save_config(config: LLMConfig) -> None:
 
 def update_config(
     api_base: Optional[str] = None,
-    api_key: Optional[str] = None, 
+    api_key: Optional[str] = None,
+    api_keys: Optional[list[str]] = None,
     model: Optional[str] = None,
     removebg_api_key: Optional[str] = None,
     bg_removal_method: Optional[str] = None,
@@ -81,6 +85,8 @@ def update_config(
         config.api_base = api_base.strip()
     if api_key is not None:
         config.api_key = api_key.strip()
+    if api_keys is not None:
+        config.api_keys = [k.strip() for k in api_keys if k.strip()]
     if model is not None:
         config.model = model.strip()
     if removebg_api_key is not None:
@@ -116,10 +122,19 @@ def get_masked_config() -> dict:
     if validate_location_input(weather_location):
         weather_location = DEFAULT_LOCATION_QUERY
     
+    all_keys = []
+    if config.api_key:
+        all_keys.append(config.api_key)
+    if config.api_keys:
+        for k in config.api_keys:
+            k = k.strip()
+            if k and k not in all_keys:
+                all_keys.append(k)
     return {
         "api_base": config.api_base,
         "api_key_masked": _mask_key(config.api_key),
         "has_api_key": bool(config.api_key),
+        "api_keys_count": len(all_keys),
         "model": config.model,
         "removebg_api_key_masked": _mask_key(config.removebg_api_key),
         "has_removebg_key": bool(config.removebg_api_key),

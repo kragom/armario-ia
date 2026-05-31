@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS clothes (
     notes TEXT DEFAULT '',
     image_filename TEXT NOT NULL,
     image_filename_thumb TEXT DEFAULT '',
+    analysis_status TEXT DEFAULT 'completed',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
@@ -33,6 +34,10 @@ MIGRATE_ADD_USER_ID_SQL = """
 ALTER TABLE clothes ADD COLUMN user_id INTEGER DEFAULT 1;
 """
 
+MIGRATE_ADD_ANALYSIS_STATUS_SQL = """
+ALTER TABLE clothes ADD COLUMN analysis_status TEXT DEFAULT 'completed';
+"""
+
 # 星座运势缓存表
 HOROSCOPE_RECORDS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS horoscope_records (
@@ -40,11 +45,8 @@ CREATE TABLE IF NOT EXISTS horoscope_records (
     record_date TEXT NOT NULL,  -- YYYY-MM-DD
     zodiac_sign TEXT NOT NULL,
     zodiac_name TEXT NOT NULL,
-    source_provider TEXT NOT NULL,  -- aztro / fallback
+    source_provider TEXT NOT NULL,  -- llm / fallback / cached
     source_payload TEXT NOT NULL,  -- JSON
-    llm_status TEXT NOT NULL DEFAULT 'pending',  -- pending / done / failed / skipped
-    llm_reasoning TEXT,
-    llm_error TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(record_date, zodiac_sign)

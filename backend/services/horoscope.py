@@ -1,18 +1,12 @@
 """
-Servicio de horóscopo - genera horóscopo vía LLM (Gemini) con fallback determinista
+Servicio de horóscopo - genera horóscopo determinista por signo zodiacal
 """
-import json
-import os
 from datetime import datetime
 from typing import Optional
 
-import httpx
-
-from storage.config_store import load_config
 from storage.db import (
     get_horoscope_record,
     upsert_horoscope_source,
-    update_horoscope_inference,
 )
 from services.weather import WeatherInfo
 
@@ -139,83 +133,6 @@ def fallback_horoscope_source(sign_key: str, weather: WeatherInfo, today: str) -
     }
 
 
-async def generate_llm_horoscope_source(sign_key: str, zodiac_name: str, today: str, weather: WeatherInfo) -> Optional[dict]:
-    """Genera el horóscopo completo vía LLM (Gemini)."""
-    config = load_config()
-    if not config.api_key:
-        return None
-
-    api_base = config.api_base.rstrip("/")
-    if not api_base.endswith("/v1"):
-        api_base = f"{api_base}/v1"
-
-    prompt = f"""
-Eres un asistente de moda y estilo personal. Genera un horóscopo de moda para {zodiac_name} ({sign_key}) el día {today}.
-
-Clima actual: {weather.condition}, {weather.temperature}°C, sensación {weather.feelsLike}°C, humedad {weather.humidity}%.
-
-Responde ÚNICAMENTE con un JSON válido con estos campos:
-- "description": 2-3 frases sobre el estilo del día (en español, natural y práctico)
-- "mood": estado de ánimo del día (ej: "creativo", "enérgico", "relajado")
-- "color": color de la suerte para vestir hoy
-- "lucky_number": número de la suerte (entero entre 1 y 99)
-- "lucky_time": momento del día recomendado (ej: "media mañana")
-- "compatibility": signo con mejor compatibilidad hoy
-
-NO escribas nada fuera del JSON.
-"""
-
-    payload = {
-        "model": config.model,
-        "messages": [
-            {"role": "system", "content": "Eres un asistente de moda. Respondes solo con JSON válido."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.post(
-                f"{api_base}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {config.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-
-        if response.status_code != 200:
-            print(f"LLM horóscopo error {response.status_code}")
-            return None
-
-        content = (
-            response.json()
-            .get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
-        if not content:
-            return None
-
-        data = json.loads(content)
-        return {
-            "current_date": today,
-            "date_range": "",
-            "description": str(data.get("description", "")),
-            "mood": str(data.get("mood", "estable")),
-            "color": str(data.get("color", DEFAULT_COLORS.get(sign_key, "azul"))),
-            "lucky_number": _to_lucky_number(data.get("lucky_number", 7)),
-            "lucky_time": str(data.get("lucky_time", "")),
-            "compatibility": str(data.get("compatibility", "")),
-            "weather_tip": build_weather_tip(weather),
-        }
-    except Exception as exc:
-        print(f"LLM horóscopo exception: {exc}")
-        return None
-
-
 def build_suggestion(weather: WeatherInfo, source_payload: dict) -> str:
     weather_tip = str(source_payload.get("weather_tip", "")).strip() or build_weather_tip(weather)
     lucky_time = str(source_payload.get("lucky_time", "")).strip()
@@ -228,11 +145,8 @@ def build_horoscope_response(
     *,
     today: str,
     sign_key: str,
-    source_provider: str,
     source_payload: dict,
     weather: WeatherInfo,
-    llm_status: str,
-    llm_reasoning: str,
 ) -> dict:
     zodiac_name = ZODIAC_NAMES.get(sign_key, sign_key)
     summary = str(source_payload.get("description", "")).strip() or "Hoy es un día para mantener el equilibrio y centrarte en lo esencial."
@@ -250,22 +164,17 @@ def build_horoscope_response(
         "lucky_color": lucky_color,
         "lucky_number": lucky_number,
         "suggestion": build_suggestion(weather, source_payload),
-        "source_provider": source_provider,
-        "llm_status": llm_status,
-        "llm_reasoning": llm_reasoning or "",
+        "source_provider": "fallback",
     }
 
 
 async def get_daily_horoscope(
     weather: WeatherInfo,
-    zodiac_sign: Optional[str] = None,
-    include_inference: bool = True,
+    zodiac_sign: str,
 ) -> dict:
-    """获取今日星座运势（先源数据，后可选推理）。"""
     today = datetime.now().strftime("%Y-%m-%d")
-    config = load_config()
 
-    sign_key = normalize_zodiac_sign(zodiac_sign) or normalize_zodiac_sign(config.zodiac_sign)
+    sign_key = normalize_zodiac_sign(zodiac_sign)
     if not sign_key:
         return {
             "date": today,
@@ -278,8 +187,6 @@ async def get_daily_horoscope(
             "lucky_number": 6,
             "suggestion": build_weather_tip(weather),
             "source_provider": "none",
-            "llm_status": "skipped",
-            "llm_reasoning": "",
         }
 
     zodiac_name = ZODIAC_NAMES.get(sign_key, sign_key)
@@ -288,51 +195,21 @@ async def get_daily_horoscope(
     if cached:
         source_payload = cached.get("source_payload") or {}
         source_provider = cached.get("source_provider", "cached")
-        llm_status = cached.get("llm_status", "pending")
-        llm_reasoning = cached.get("llm_reasoning", "")
-        record_id = int(cached["id"])
     else:
-        source_payload = await generate_llm_horoscope_source(sign_key=sign_key, zodiac_name=zodiac_name, today=today, weather=weather)
-        source_provider = "llm"
-        if not source_payload:
-            source_payload = fallback_horoscope_source(sign_key=sign_key, weather=weather, today=today)
-            source_provider = "fallback"
+        source_payload = fallback_horoscope_source(sign_key=sign_key, weather=weather, today=today)
+        source_provider = "fallback"
 
-        record_id = await upsert_horoscope_source(
+        await upsert_horoscope_source(
             record_date=today,
             zodiac_sign=sign_key,
             zodiac_name=zodiac_name,
             source_provider=source_provider,
             source_payload=source_payload,
         )
-        llm_status = "pending"
-        llm_reasoning = ""
-
-    # 每天只推理一次：只有当天首次记录的 pending 状态才执行推理
-    if include_inference and llm_status == "pending":
-        reasoning, status, err = await generate_llm_reasoning(
-            sign_key=sign_key,
-            zodiac_name=zodiac_name,
-            weather=weather,
-            source_payload=source_payload,
-        )
-        if reasoning:
-            llm_reasoning = reasoning
-        llm_status = status
-
-        await update_horoscope_inference(
-            record_id=record_id,
-            llm_status=llm_status,
-            llm_reasoning=llm_reasoning,
-            llm_error=err,
-        )
 
     return build_horoscope_response(
         today=today,
         sign_key=sign_key,
-        source_provider=source_provider,
         source_payload=source_payload,
         weather=weather,
-        llm_status=llm_status,
-        llm_reasoning=llm_reasoning,
     )

@@ -33,7 +33,7 @@ export function RecommendationProvider({ children }) {
   useEffect(() => {
     const fetchDefaultCity = async () => {
       try {
-        const response = await authFetch(`${API_BASE}/config`)
+        const response = await authFetch(`${API_BASE}/user/profile`)
         if (!response.ok) {
           return
         }
@@ -52,7 +52,7 @@ export function RecommendationProvider({ children }) {
           }
         }))
       } catch (error) {
-        console.error('Failed to fetch default city config:', error)
+        console.error('Failed to fetch user profile for default city:', error)
       }
     }
 

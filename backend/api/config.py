@@ -22,6 +22,7 @@ async def set_config(config_update: LLMConfigUpdate):
         config = update_config(
             api_base=config_update.api_base,
             api_key=config_update.api_key,
+            api_keys=config_update.api_keys,
             model=config_update.model,
             removebg_api_key=config_update.removebg_api_key,
             bg_removal_method=config_update.bg_removal_method,
@@ -54,9 +55,10 @@ async def list_models():
 @router.post("/test-connection")
 async def test_connection():
     """测试 API 连接"""
-    config = load_config()
+    from services.key_rotator import get_current_key
     
-    if not config.api_key:
+    key = await get_current_key()
+    if not key:
         return {
             "success": False,
             "message": "请先配置 API Key"

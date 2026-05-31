@@ -13,6 +13,7 @@ from storage.models import (
     HOROSCOPE_RECORDS_TABLE_SQL,
     HOROSCOPE_RECORDS_INDEX_SQL,
     MIGRATE_ADD_USER_ID_SQL,
+    MIGRATE_ADD_ANALYSIS_STATUS_SQL,
 )
 
 # 数据库文件路径
@@ -38,6 +39,10 @@ async def init_db():
             await db.execute(MIGRATE_ADD_USER_ID_SQL)
         except Exception:
             pass  # Columna ya existe
+        try:
+            await db.execute(MIGRATE_ADD_ANALYSIS_STATUS_SQL)
+        except Exception:
+            pass
         await db.commit()
 
 
@@ -48,8 +53,8 @@ async def add_clothes(clothes: ClothesCreate, user_id: int = 1) -> int:
             INSERT INTO clothes (
                 user_id, category, item, style_semantics, season_semantics,
                 usage_semantics, color_semantics, description, notes,
-                image_filename, image_filename_thumb
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                image_filename, image_filename_thumb, analysis_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_id,
@@ -62,7 +67,8 @@ async def add_clothes(clothes: ClothesCreate, user_id: int = 1) -> int:
                 clothes.description,
                 clothes.notes or "",
                 clothes.image_filename,
-                clothes.image_filename_thumb or ""
+                clothes.image_filename_thumb or "",
+                clothes.analysis_status,
             )
         )
         await db.commit()
@@ -121,7 +127,8 @@ async def update_clothes(clothes_id: int, clothes: ClothesCreate, user_id: int =
             UPDATE clothes 
             SET category = ?, item = ?, style_semantics = ?, 
                 season_semantics = ?, usage_semantics = ?, 
-                color_semantics = ?, description = ?, notes = ?
+                color_semantics = ?, description = ?, notes = ?,
+                image_filename = ?, analysis_status = ?
             WHERE id = ? AND user_id = ?
             """,
             (
@@ -133,9 +140,31 @@ async def update_clothes(clothes_id: int, clothes: ClothesCreate, user_id: int =
                 clothes.color_semantics,
                 clothes.description,
                 clothes.notes or "",
+                clothes.image_filename,
+                clothes.analysis_status,
                 clothes_id,
                 user_id
             )
+        )
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def update_clothes_metadata(clothes_id: int, category: str, item: str, notes: str, user_id: int = 1) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "UPDATE clothes SET category = ?, item = ?, notes = ?, analysis_status = 'completed' WHERE id = ? AND user_id = ?",
+            (category, item, notes, clothes_id, user_id),
+        )
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def update_clothes_analysis(clothes_id: int, analysis_status: str, user_id: int = 1) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "UPDATE clothes SET analysis_status = ? WHERE id = ? AND user_id = ?",
+            (analysis_status, clothes_id, user_id),
         )
         await db.commit()
         return cursor.rowcount > 0
@@ -202,8 +231,8 @@ async def upsert_horoscope_source(
         cursor = await db.execute(
             """
             INSERT INTO horoscope_records (
-                record_date, zodiac_sign, zodiac_name, source_provider, source_payload, llm_status
-            ) VALUES (?, ?, ?, ?, ?, 'pending')
+                record_date, zodiac_sign, zodiac_name, source_provider, source_payload
+            ) VALUES (?, ?, ?, ?, ?)
             """,
             (record_date, zodiac_sign, zodiac_name, source_provider, payload_json),
         )
@@ -247,6 +276,7 @@ def _row_to_clothes_item(row: aiosqlite.Row) -> ClothesItem:
         notes=row["notes"] or "",
         image_url=f"/uploads/{row['image_filename']}",
         thumbnail_url=f"/uploads/{row['image_filename_thumb']}" if row.get("image_filename_thumb") else "",
+        analysis_status=row.get("analysis_status", "completed") or "completed",
         created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now()
     )
 
@@ -260,9 +290,6 @@ def _row_to_horoscope_record(row: aiosqlite.Row) -> dict[str, Any]:
         "zodiac_name": row["zodiac_name"],
         "source_provider": row["source_provider"] or "unknown",
         "source_payload": json.loads(row["source_payload"] or "{}"),
-        "llm_status": row["llm_status"] or "pending",
-        "llm_reasoning": row["llm_reasoning"] or "",
-        "llm_error": row["llm_error"] or "",
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }

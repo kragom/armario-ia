@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Upload from '../components/Upload'
 import Settings from '../components/Settings'
 import { Save, ArrowLeft, Tag, Palette, Layers, CloudSun, FileText, Shirt, Settings as SettingsIcon, Sparkles } from 'lucide-react'
@@ -10,6 +10,7 @@ import { API_BASE, toImageUrl, authFetch } from '../utils/api'
 export default function Entry() {
     const { t } = useTranslation()
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
     const [editingItem, setEditingItem] = useState(null)
     const [loading, setLoading] = useState(false)
     const [showSettings, setShowSettings] = useState(false)
@@ -23,6 +24,25 @@ export default function Entry() {
         season_semantics: '',
         usage_semantics: ''
     })
+
+    useEffect(() => {
+        const editId = searchParams.get('edit')
+        if (editId) {
+            loadItem(editId)
+        }
+    }, [searchParams])
+
+    const loadItem = async (id) => {
+        try {
+            const res = await authFetch(`${API_BASE}/clothes/${id}`)
+            if (res.ok) {
+                const item = await res.json()
+                handleUploadSuccess(item)
+            }
+        } catch (e) {
+            console.error('Failed to load item for editing:', e)
+        }
+    }
 
     const handleUploadSuccess = (item) => {
         setEditingItem(item)

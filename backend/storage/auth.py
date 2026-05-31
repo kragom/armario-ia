@@ -44,6 +44,14 @@ async def init_auth_db():
         await db.execute("""
             CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)
         """)
+
+        # Migración: añadir columnas si no existen
+        for col in ["zodiac_sign", "weather_location"]:
+            try:
+                await db.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT DEFAULT ''")
+            except Exception:
+                pass
+
         await db.commit()
 
         cursor = await db.execute("SELECT COUNT(*) FROM users")
@@ -130,3 +138,13 @@ async def delete_session(token: str):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM sessions WHERE token = ?", (token,))
         await db.commit()
+
+
+async def update_user_profile(user_id: int, zodiac_sign: str = "", weather_location: str = "") -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "UPDATE users SET zodiac_sign = ?, weather_location = ? WHERE id = ?",
+            (zodiac_sign, weather_location, user_id)
+        )
+        await db.commit()
+        return cursor.rowcount > 0

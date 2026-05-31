@@ -30,22 +30,25 @@ class RecommendationResponse(BaseModel):
 
 @router.get("/recommendation", response_model=RecommendationResponse)
 async def get_outfit_recommendation(
-    location: str = Query(
-        default=DEFAULT_LOCATION_QUERY,
+    location: Optional[str] = Query(
+        default=None,
         description="城市名 或 经纬度坐标(如 '31.23,121.47' 或 '121.47,31.23')"
     ),
     city: Optional[str] = Query(default=None, description="城市（结构化查询参数）"),
     state: Optional[str] = Query(default=None, description="省/州（结构化查询参数）"),
     country: Optional[str] = Query(default=None, description="国家（结构化查询参数）"),
-    zodiac_sign: Optional[str] = Query(
-        default=None,
-        description="可选，临时指定星座（会覆盖设置中的星座）"
-    ),
     goal: Optional[str] = Query(default=None, description="可选，用户本次穿搭目标/场景"),
     user_id: int = Depends(get_current_user_id),
 ):
+    from storage.auth import get_user_by_id
+    user = await get_user_by_id(user_id)
+
+    # Usar ubicación del perfil del usuario si no se especificó
+    effective_location = location or (user.get("weather_location", "") if user else "") or DEFAULT_LOCATION_QUERY
+    effective_zodiac = (user.get("zodiac_sign", "") if user else "") or ""
+
     normalized_location, validation_error = normalize_location_request(
-        location=location,
+        location=effective_location,
         city=city,
         state=state,
         country=country,
@@ -53,13 +56,9 @@ async def get_outfit_recommendation(
     if validation_error:
         raise HTTPException(status_code=422, detail=validation_error)
 
-    # 获取天气信息
     weather = await get_weather(normalized_location)
-    
     if not weather:
-        raise HTTPException(status_code=500, detail="获取天气信息失败")
-    
-    # 获取AI推荐
-    recommendation = await get_ai_recommendation(weather, zodiac_sign=zodiac_sign, goal=goal, user_id=user_id)
-    
+        raise HTTPException(status_code=500, detail="No se pudo obtener el clima")
+
+    recommendation = await get_ai_recommendation(weather, zodiac_sign=effective_zodiac, goal=goal, user_id=user_id)
     return recommendation

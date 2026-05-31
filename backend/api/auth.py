@@ -13,6 +13,8 @@ from storage.auth import (
     get_session_user,
     delete_session,
     change_password as storage_change_password,
+    get_user_by_id,
+    update_user_profile as storage_update_user_profile,
 )
 
 router = APIRouter()
@@ -129,3 +131,48 @@ async def change_password(req: ChangePasswordRequest, authorization: Optional[st
     if not ok:
         raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
     return {"message": "Contraseña cambiada correctamente"}
+
+
+class ProfileUpdateRequest(BaseModel):
+    zodiac_sign: str = ""
+    weather_location: str = ""
+
+
+class ProfileResponse(BaseModel):
+    user_id: int
+    username: str
+    display_name: str
+    zodiac_sign: str = ""
+    weather_location: str = ""
+
+
+@router.get("/user/profile", response_model=ProfileResponse)
+async def get_user_profile(user_id: int = Depends(get_current_user_id)):
+    user = await get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return ProfileResponse(
+        user_id=user["id"],
+        username=user["username"],
+        display_name=user["display_name"],
+        zodiac_sign=user.get("zodiac_sign", "") or "",
+        weather_location=user.get("weather_location", "") or "",
+    )
+
+
+@router.put("/user/profile", response_model=ProfileResponse)
+async def update_user_profile_endpoint(
+    req: ProfileUpdateRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    ok = await storage_update_user_profile(user_id, req.zodiac_sign, req.weather_location)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    user = await get_user_by_id(user_id)
+    return ProfileResponse(
+        user_id=user["id"],
+        username=user["username"],
+        display_name=user["display_name"],
+        zodiac_sign=user.get("zodiac_sign", "") or "",
+        weather_location=user.get("weather_location", "") or "",
+    )

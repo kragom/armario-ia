@@ -28,7 +28,6 @@ export default function Home() {
     const [weather, setWeather] = useState(null)
     const [wardrobe, setWardrobe] = useState({ tops: [], bottoms: [], shoes: [], accessories: [] })
     const [horoscope, setHoroscope] = useState(null)
-    const [horoscopeInferenceLoading, setHoroscopeInferenceLoading] = useState(false)
     const [defaultLocation, setDefaultLocation] = useState(FALLBACK_LOCATION)
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
@@ -57,7 +56,7 @@ export default function Home() {
 
     const fetchConfiguredLocation = async () => {
         try {
-            const response = await authFetch(`${API_BASE}/config`)
+            const response = await authFetch(`${API_BASE}/user/profile`)
             if (!response.ok) {
                 return FALLBACK_LOCATION
             }
@@ -68,26 +67,10 @@ export default function Home() {
         }
     }
 
-    const fetchHoroscope = async (location, includeInference = false) => {
-        const response = await authFetch(
-            `${API_BASE}/horoscope/daily?location=${encodeURIComponent(location)}&include_inference=${includeInference}`
-        )
+    const fetchHoroscope = async (location) => {
+        const response = await authFetch(`${API_BASE}/horoscope/daily?location=${encodeURIComponent(location)}`)
         if (!response.ok) return null
         return response.json()
-    }
-
-    const runHoroscopeInference = async (location) => {
-        setHoroscopeInferenceLoading(true)
-        try {
-            const inferred = await fetchHoroscope(location, true)
-            if (inferred) {
-                setHoroscope(inferred)
-            }
-        } catch (error) {
-            console.error('Failed to fetch horoscope inference:', error)
-        } finally {
-            setHoroscopeInferenceLoading(false)
-        }
     }
 
     const fetchDashboard = async (withLoading = true, location = defaultLocation) => {
@@ -101,7 +84,7 @@ export default function Home() {
             const [weatherRes, wardrobeRes, horoscopeData] = await Promise.all([
                 authFetch(`${API_BASE}/weather?location=${encodeURIComponent(location)}`),
                 authFetch(`${API_BASE}/wardrobe`),
-                fetchHoroscope(location, false)
+                fetchHoroscope(location)
             ])
 
             if (weatherRes.ok) {
@@ -120,12 +103,6 @@ export default function Home() {
 
             if (horoscopeData) {
                 setHoroscope(horoscopeData)
-                const shouldInfer = horoscopeData.llm_status === 'pending'
-                if (horoscopeData.is_configured && shouldInfer) {
-                    void runHoroscopeInference(location)
-                } else {
-                    setHoroscopeInferenceLoading(false)
-                }
             }
         } catch (error) {
             console.error('Failed to fetch home dashboard:', error)
@@ -360,20 +337,6 @@ export default function Home() {
 
                         <div className="mt-3 text-xs text-zinc-500 leading-relaxed">
                             {horoscope?.suggestion || t('home.horoscopeFallback')}
-                        </div>
-
-                        <div className="mt-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 p-3">
-                            <div className="text-[10px] uppercase tracking-wide text-zinc-500">{t('home.llmReasoningTitle')}</div>
-                            {horoscopeInferenceLoading ? (
-                                <div className="mt-2 flex items-center gap-2 text-xs text-zinc-500">
-                                    <div className="w-4 h-4 border-2 border-zinc-300 dark:border-zinc-700 border-t-accent rounded-full animate-spin"></div>
-                                    {t('home.llmReasoningLoading')}
-                                </div>
-                            ) : (
-                                <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                                    {horoscope?.llm_reasoning || t('home.llmReasoningFallback')}
-                                </p>
-                            )}
                         </div>
 
                         {horoscope && !horoscope.is_configured && (

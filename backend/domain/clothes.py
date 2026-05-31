@@ -47,6 +47,7 @@ class ClothesItem(BaseModel):
     notes: str = ""
     image_url: str
     thumbnail_url: str = ""
+    analysis_status: str = "completed"
     created_at: datetime
 
 
@@ -62,6 +63,7 @@ class ClothesCreate(BaseModel):
     notes: str = ""
     image_filename: str
     image_filename_thumb: str = ""
+    analysis_status: str = "completed"
 
 
 class WardrobeResponse(BaseModel):

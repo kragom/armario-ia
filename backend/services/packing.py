@@ -80,9 +80,14 @@ async def generate_packing_list(
             f"Día {d+1} ({date_str}): {w_desc}, {w_temp}°C"
         )
 
-    if config.api_key:
+    # Usar lógica rule-based por defecto
+    # Si hay API key configurada, intentar versión mejorada con IA
+    from services.key_rotator import get_current_key
+    key = await get_current_key()
+    if key:
         llm_result = await _generate_via_llm(
             config=config,
+            api_key=key,
             days=days,
             location=location,
             forecasts=forecasts,
@@ -107,6 +112,7 @@ async def generate_packing_list(
 
 async def _generate_via_llm(
     config,
+    api_key: str,
     days: int,
     location: str,
     forecasts: list,
@@ -117,6 +123,8 @@ async def _generate_via_llm(
     season: str,
     weather: WeatherInfo,
 ) -> Optional[dict]:
+    from services.key_rotator import rotate_key
+
     api_base = config.api_base.rstrip("/")
     if not api_base.endswith("/v1"):
         api_base = f"{api_base}/v1"
@@ -172,41 +180,53 @@ Usa SOLO los IDs y nombres del armario listado arriba. Si falta una categoría, 
         "temperature": 0.7,
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                f"{api_base}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {config.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-        if resp.status_code != 200:
+    key = api_key
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{api_base}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+            if resp.status_code == 200:
+                content = (
+                    resp.json()
+                    .get("choices", [{}])[0]
+                    .get("message", {})
+                    .get("content", "")
+                    .strip()
+                )
+                if not content:
+                    return None
+                if content.startswith("```"):
+                    content = content.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+
+                data = json.loads(content)
+                return {
+                    "days": data.get("days", []),
+                    "trip_summary": data.get("trip_summary", ""),
+                    "items_not_to_forget": data.get("items_not_to_forget", []),
+                    "total_items": data.get("total_items", 0),
+                }
+
+            if resp.status_code == 429 and attempt == 0:
+                key = await rotate_key()
+                if key:
+                    continue
+            return None
+        except Exception as e:
+            print(f"LLM packing error (intento {attempt + 1}): {e}")
+            if attempt == 0:
+                key = await rotate_key()
+                if key:
+                    continue
             return None
 
-        content = (
-            resp.json()
-            .get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
-        if not content:
-            return None
-        if content.startswith("```"):
-            content = content.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-
-        data = json.loads(content)
-        return {
-            "days": data.get("days", []),
-            "trip_summary": data.get("trip_summary", ""),
-            "items_not_to_forget": data.get("items_not_to_forget", []),
-            "total_items": data.get("total_items", 0),
-        }
-    except Exception as e:
-        print(f"LLM packing error: {e}")
-        return None
+    return None
 
 
 def _generate_fallback(days, forecasts, items_by_cat, total, items_summary):

@@ -16,9 +16,11 @@ async def fetch_available_models() -> List[dict]:
     """
     获取可用模型列表
     """
+    from services.key_rotator import get_current_key
+
     config = load_config()
-    
-    if not config.api_key:
+    key = await get_current_key()
+    if not key:
         return []
     
     # 确保 api_base 格式正确
@@ -33,7 +35,7 @@ async def fetch_available_models() -> List[dict]:
             response = await client.get(
                 url,
                 headers={
-                    "Authorization": f"Bearer {config.api_key}",
+                    "Authorization": f"Bearer {key}",
                     "Content-Type": "application/json",
                     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 }
@@ -42,7 +44,6 @@ async def fetch_available_models() -> List[dict]:
             if response.status_code == 200:
                 data = response.json()
                 models = data.get("data", [])
-                # 过滤出支持视觉的模型（通常包含 vision, gpt-4o, claude 等关键词）
                 return [
                     {"id": m["id"], "name": m.get("name", m["id"])}
                     for m in models
@@ -89,70 +90,57 @@ def extract_json_from_response(text: str) -> dict:
 async def analyze_clothes_openai(image_bytes: bytes) -> ClothesSemantics:
     """
     使用 OpenAI 兼容 API 分析衣物图片
-    
-    Args:
-        image_bytes: 图片的字节数据
-        
-    Returns:
-        ClothesSemantics: 衣物语义信息
     """
+    from services.key_rotator import get_current_key, rotate_key
+
     config = load_config()
-    
-    if not config.api_key:
+    key = await get_current_key()
+    if not key:
         raise ValueError("请先配置 API Key")
     
-    # 确保 api_base 格式正确
     api_base = config.api_base.rstrip("/")
     if not api_base.endswith("/v1"):
         api_base = api_base + "/v1"
     
     url = f"{api_base}/chat/completions"
-    
-    # 将图片转换为 base64
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     
-    # 构建请求体
     payload = {
         "model": config.model,
         "messages": [
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": CLOTHES_SEMANTIC_PROMPT
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{image_base64}"
-                        }
-                    }
+                    {"type": "text", "text": CLOTHES_SEMANTIC_PROMPT},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_base64}"}}
                 ]
             }
         ],
         "max_tokens": 1000
     }
     
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {config.api_key}",
-                "Content-Type": "application/json"
-            },
-            json=payload
-        )
-        
-        if response.status_code != 200:
+    for attempt in range(2):
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json"
+                },
+                json=payload
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                result = extract_json_from_response(content)
+                return ClothesSemantics(**result)
+            
+            if response.status_code == 429 and attempt == 0:
+                key = await rotate_key()
+                if key:
+                    continue
+            
             raise ValueError(f"API 请求失败: {response.status_code} - {response.text}")
-        
-        data = response.json()
-        
-        # 提取响应内容
-        content = data["choices"][0]["message"]["content"]
-        
-        # 解析 JSON
-        result = extract_json_from_response(content)
-        
-        return ClothesSemantics(**result)
+    
+    raise ValueError("Todos los API Keys agotados")

@@ -336,8 +336,7 @@ async def get_ai_recommendation(
 
     horoscope = await get_daily_horoscope(
         weather=weather,
-        zodiac_sign=zodiac_sign,
-        include_inference=True,
+        zodiac_sign=zodiac_sign or "",
     )
     goal_raw, goal_normalized = normalize_goal(goal)
     temperature_profile = build_temperature_profile(weather)
@@ -485,8 +484,11 @@ async def get_llm_recommendation(
     """
     使用 LLM 生成推荐文案，失败时回退到规则文本。
     """
+    from services.key_rotator import get_current_key, rotate_key
+
     config = load_config()
-    if not config.api_key:
+    key = await get_current_key()
+    if not key:
         return generate_basic_recommendation(
             weather=weather,
             horoscope=horoscope,
@@ -571,32 +573,41 @@ Instrucciones de salida:
             "temperature": 0.6,
         }
 
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.post(
-                f"{api_base}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {config.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
+        for attempt in range(2):
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                response = await client.post(
+                    f"{api_base}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
 
-        if response.status_code != 200:
-            print(f"LLM API请求失败: {response.status_code}")
-            return generate_basic_recommendation(
-                weather=weather,
-                horoscope=horoscope,
-                temperature_profile=temperature_profile,
-                selected=selected,
-                selection_reasons=selection_reasons,
-                purchase_suggestions=purchase_suggestions,
-                suggested_accessories=suggested_accessories,
-                goal_raw=goal_raw,
-                goal_normalized=goal_normalized,
-            )
+            if response.status_code == 200:
+                data = response.json()
+                return data["choices"][0]["message"]["content"].strip()
 
-        data = response.json()
-        return data["choices"][0]["message"]["content"].strip()
+            if response.status_code == 429 and attempt == 0:
+                key = await rotate_key()
+                if key:
+                    continue
+                break
+
+            break
+
+        print(f"LLM API请求失败: {response.status_code}")
+        return generate_basic_recommendation(
+            weather=weather,
+            horoscope=horoscope,
+            temperature_profile=temperature_profile,
+            selected=selected,
+            selection_reasons=selection_reasons,
+            purchase_suggestions=purchase_suggestions,
+            suggested_accessories=suggested_accessories,
+            goal_raw=goal_raw,
+            goal_normalized=goal_normalized,
+        )
     except Exception as exc:
         print(f"调用LLM失败: {exc}")
         return generate_basic_recommendation(

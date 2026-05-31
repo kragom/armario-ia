@@ -1,6 +1,10 @@
 """
 AI 智能衣柜 - FastAPI 后端入口
 """
+import asyncio
+import json
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -9,7 +13,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from api.upload import router as upload_router
 from api.wardrobe import router as wardrobe_router
@@ -22,31 +25,109 @@ from api.packing import router as packing_router
 from storage.db import init_db
 from storage.auth import init_auth_db
 
-# 上传目录
 UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+
+ANALYZE_INTERVAL = 120  # segundos entre ciclos de análisis
+
+
+async def auto_analyze_pending():
+    """Analiza automáticamente prendas pendientes cuando hay quota de IA."""
+    while True:
+        try:
+            await asyncio.sleep(ANALYZE_INTERVAL)
+
+            from storage.db import get_all_clothes, update_clothes
+            from domain.clothes import ClothesCreate, normalize_category_value
+            from services.openai_compatible import analyze_clothes_openai
+            from api.upload import UPLOAD_DIR, ALLOWED_CATEGORIES
+
+            from services.key_rotator import get_current_key
+            key = await get_current_key()
+            if not key:
+                continue  # Sin API key, saltar
+
+            # Obtener todas las prendas de todos los usuarios
+            # (necesitamos user_id para update_clothes)
+            import aiosqlite
+            from storage.db import DB_PATH
+
+            async with aiosqlite.connect(DB_PATH) as db:
+                db.row_factory = aiosqlite.Row
+                cursor = await db.execute(
+                    "SELECT * FROM clothes WHERE analysis_status = 'pending' ORDER BY created_at ASC LIMIT 5"
+                )
+                pending = await cursor.fetchall()
+
+            for row in pending:
+                clothes_id = row["id"]
+                user_id = row["user_id"]
+                image_filename = row["image_filename"]
+
+                filepath = UPLOAD_DIR / image_filename
+                if not filepath.exists():
+                    continue
+
+                with open(filepath, "rb") as f:
+                    image_bytes = f.read()
+
+                try:
+                    semantics = await analyze_clothes_openai(image_bytes)
+                    normalized_category = normalize_category_value(semantics.category)
+                    if normalized_category not in ALLOWED_CATEGORIES:
+                        normalized_category = "accessory"
+
+                    updated = ClothesCreate(
+                        category=normalized_category,
+                        item=semantics.item,
+                        style_semantics=semantics.style_semantics,
+                        season_semantics=semantics.season_semantics,
+                        usage_semantics=semantics.usage_semantics,
+                        color_semantics=semantics.color_semantics,
+                        description=semantics.description,
+                        notes=semantics.notes or "",
+                        image_filename=image_filename,
+                        image_filename_thumb=row.get("image_filename_thumb", "") or "",
+                        analysis_status="completed",
+                    )
+                    await update_clothes(clothes_id, updated, user_id)
+                    print(f"✅ Auto-análisis completado: prenda {clothes_id}")
+                except Exception as e:
+                    print(f"⏳ Auto-análisis pendiente (sin quota): {e}")
+                    break  # Si falla por quota, esperar al próximo ciclo
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"Error en auto-análisis: {e}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
-    # 启动时初始化数据库
     await init_db()
     await init_auth_db()
-    print("✅ 数据库初始化完成")
+    print("✅ Base de datos inicializada")
+
+    task = asyncio.create_task(auto_analyze_pending())
+    print("🔍 Auto-análisis de prendas pendientes iniciado")
+
     yield
-    # 关闭时的清理工作（如需要）
-    print("👋 应用关闭")
+
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+    print("👋 Auto-análisis detenido")
 
 
 app = FastAPI(
-    title="AI 智能衣柜",
-    description="个人 AI 智能衣柜系统 - 上传照片、语义识别、智能穿搭",
+    title="Armario IA",
+    description="Armario inteligente personal",
     version="1.0.0",
     lifespan=lifespan
 )
 
-# CORS 配置 - 允许前端访问
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -55,20 +136,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware para cachear imágenes estáticas (1 año)
+
 class CacheControlMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        response: Response = await call_next(request)
+        try:
+            response: Response = await call_next(request)
+        except Exception:
+            raise
         if request.url.path.startswith("/uploads/") and response.status_code == 200:
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
 
 app.add_middleware(CacheControlMiddleware)
 
-# 静态文件 - 用于访问上传的图片
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
-# 注册路由
 app.include_router(upload_router, prefix="/api", tags=["上传"])
 app.include_router(wardrobe_router, prefix="/api", tags=["衣柜"])
 app.include_router(config_router, prefix="/api", tags=["配置"])
@@ -81,7 +163,6 @@ app.include_router(horoscope_router, prefix="/api", tags=["星座运势"])
 
 @app.get("/api")
 async def api_info():
-    """API 信息"""
     return {
         "message": "Armario IA API",
         "docs": "/docs",
@@ -106,46 +187,32 @@ async def api_info():
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
     return {"status": "healthy"}
 
 
-# --------------------------------------------------------------------------
-# 前端静态资源服务 (用于 Docker/生产环境)
-# --------------------------------------------------------------------------
+# Static frontend (for Docker/production)
 static_dir = Path(__file__).parent / "static"
 
 if static_dir.exists():
-    # 1. 优先挂载静态资源 (assets, images, etc.)
     app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
 
-    # 2. 处理 favicon.ico 等根目录文件
     @app.get("/favicon.ico", include_in_schema=False)
     async def favicon():
         return FileResponse(static_dir / "favicon.ico")
 
-    # 3. 根路径返回 index.html
     @app.get("/")
     async def serve_root():
         return FileResponse(static_dir / "index.html")
 
-    # 4. SPA 路由 - 所有未匹配的路径都返回 index.html
-    # 注意：这必须放在所有 API 路由定义之后
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_frontend(full_path: str):
-        # 如果请求的是 API 或 uploads (且未被上面的路由捕获)，则说明是 404
         if full_path.startswith("api/") or full_path.startswith("uploads/"):
-             return {"error": "Not Found", "detail": f"Path {full_path} not found"}
-        
-        # 尝试直接返回文件 (e.g. manifest.json, robots.txt)
+            return {"error": "Not Found", "detail": f"Path {full_path} not found"}
         file_path = static_dir / full_path
         if file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
-            
-        # 默认返回 index.html 让前端路由处理
         return FileResponse(static_dir / "index.html")
 else:
-    # 纯后端模式下的根路径提示
     @app.get("/")
     async def root():
         return {

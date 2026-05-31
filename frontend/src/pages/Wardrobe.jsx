@@ -165,6 +165,11 @@ export default function Wardrobe() {
                                                 height="300"
                                                 className="w-full h-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-500"
                                             />
+                                            {item.analysis_status === 'pending' && (
+                                                <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 font-semibold shadow-sm">
+                                                    Pendiente
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="p-3 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800">
                                             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate pr-2">{item.item}</span>

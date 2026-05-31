@@ -9,6 +9,7 @@ class LLMConfig(BaseModel):
     """LLM API configuration"""
     api_base: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     api_key: str = ""
+    api_keys: List[str] = []
     model: str = "gemini-2.0-flash"
     # remove.bg config
     removebg_api_key: str = ""
@@ -17,12 +18,13 @@ class LLMConfig(BaseModel):
     weather_location: str = "Madrid, Comunidad de Madrid, España"
     # Signo zodiacal del usuario
     zodiac_sign: str = ""
-    
-    
+
+
 class LLMConfigUpdate(BaseModel):
     """更新 LLM 配置的请求体"""
     api_base: Optional[str] = None
     api_key: Optional[str] = None
+    api_keys: Optional[List[str]] = None
     model: Optional[str] = None
     removebg_api_key: Optional[str] = None
     bg_removal_method: Optional[Literal["local", "removebg"]] = None
