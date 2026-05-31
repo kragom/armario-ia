@@ -7,6 +7,7 @@ import Wardrobe from './pages/Wardrobe'
 import ClothesDetail from './pages/ClothesDetail'
 import Outfit from './pages/Outfit'
 import Recommendation from './pages/Recommendation'
+import Packing from './pages/Packing'
 import TabBar from './components/TabBar'
 import './index.css'
 
@@ -47,6 +48,7 @@ function App() {
           <Route path="/clothes/:id" element={<ProtectedRoute><ClothesDetail /></ProtectedRoute>} />
           <Route path="/outfit" element={<ProtectedRoute><Outfit /></ProtectedRoute>} />
           <Route path="/recommendation" element={<ProtectedRoute><Recommendation /></ProtectedRoute>} />
+          <Route path="/packing" element={<ProtectedRoute><Packing /></ProtectedRoute>} />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

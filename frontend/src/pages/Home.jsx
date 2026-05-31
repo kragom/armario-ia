@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Settings as SettingsIcon, RefreshCw, Sparkles, CloudSun, Droplets, Wind, Thermometer, ChevronLeft, ChevronRight, Shirt, ArrowRight, LogOut } from 'lucide-react'
+import { Settings as SettingsIcon, RefreshCw, Sparkles, CloudSun, Droplets, Wind, Thermometer, ChevronLeft, ChevronRight, Shirt, ArrowRight, LogOut, Luggage } from 'lucide-react'
 import Settings from '../components/Settings'
 import { useAuth } from '../contexts/AuthContext'
 import { API_BASE, toImageUrl, authFetch } from '../utils/api'
@@ -385,6 +385,20 @@ export default function Home() {
                             </button>
                         )}
                     </section>
+
+                    <button
+                        onClick={() => navigate('/packing')}
+                        className="card p-4 w-full text-left flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-rose-500 flex items-center justify-center shrink-0">
+                            <Luggage size={20} className="text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Prepara la maleta</p>
+                            <p className="text-xs text-zinc-500 truncate">Elige los días y genera outfits para tu viaje</p>
+                        </div>
+                        <ArrowRight size={18} className="text-zinc-400 shrink-0" />
+                    </button>
                 </main>
             )}
 

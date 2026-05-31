@@ -18,6 +18,7 @@ from api.weather import router as weather_router
 from api.recommendation import router as recommendation_router
 from api.horoscope import router as horoscope_router
 from api.auth import router as auth_router
+from api.packing import router as packing_router
 from storage.db import init_db
 from storage.auth import init_auth_db
 
@@ -74,6 +75,7 @@ app.include_router(config_router, prefix="/api", tags=["配置"])
 app.include_router(weather_router, prefix="/api", tags=["天气"])
 app.include_router(recommendation_router, prefix="/api", tags=["AI推荐"])
 app.include_router(auth_router, prefix="/api", tags=["认证"])
+app.include_router(packing_router, prefix="/api", tags=["Maleta"])
 app.include_router(horoscope_router, prefix="/api", tags=["星座运势"])
 
 
@@ -96,7 +98,8 @@ async def api_info():
             "weather": "GET /api/weather",
             "weather_suggestion": "GET /api/weather/suggestion",
             "ai_recommendation": "GET /api/recommendation",
-            "daily_horoscope": "GET /api/horoscope/daily"
+            "daily_horoscope": "GET /api/horoscope/daily",
+            "packing_list": "GET /api/maleta"
         }
     }
 
