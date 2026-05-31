@@ -17,10 +17,6 @@ export default function SelectableChips({ options = [], selected = [], onChange,
   }
 
   const handleToggle = (value) => {
-    if (colorChips) {
-      onChange(value === selected ? '' : value)
-      return
-    }
     const next = selected.includes(value)
       ? selected.filter(v => v !== value)
       : [...selected, value]
@@ -30,7 +26,7 @@ export default function SelectableChips({ options = [], selected = [], onChange,
   return (
     <div className="flex flex-wrap gap-2">
       {options.map(value => {
-        const isSelected = colorChips ? selected === value : selected.includes(value)
+        const isSelected = selected.includes(value)
         const color = COLOR_MAP[value]
         return (
           <button
@@ -54,11 +50,6 @@ export default function SelectableChips({ options = [], selected = [], onChange,
                 />
               )}
               {getLabel(value)}
-              {colorChips && isSelected && selected === value && (
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
             </span>
           </button>
         )

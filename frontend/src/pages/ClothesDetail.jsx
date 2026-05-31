@@ -115,8 +115,8 @@ export default function ClothesDetail() {
             const chips = field === 'color_semantics'
                 ? <SelectableChips
                     options={options.colors}
-                    selected={editData.color_semantics}
-                    onChange={(v) => setEditData(prev => ({ ...prev, color_semantics: v }))}
+                    selected={(editData.color_semantics || '').split(/,\s*/).filter(Boolean)}
+                    onChange={(v) => setEditData(prev => ({ ...prev, color_semantics: v.join(', ') }))}
                     type="color"
                     colorChips
                   />
@@ -264,7 +264,7 @@ export default function ClothesDetail() {
 
                     <div>
                         <h3 className="text-sm font-medium text-zinc-500">{t('clothesDetail.color')}</h3>
-                        {renderTags(editing ? null : item.color_semantics ? [item.color_semantics] : [], editing ? 'color_semantics' : null)}
+                        {renderTags(editing ? null : item.color_semantics ? item.color_semantics.split(/,\s*/).filter(Boolean) : [], editing ? 'color_semantics' : null)}
                     </div>
 
                     <div>

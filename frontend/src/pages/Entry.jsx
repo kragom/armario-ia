@@ -179,8 +179,8 @@ export default function Entry() {
                                 </label>
                                 <SelectableChips
                                     options={options.colors}
-                                    selected={formData.color_semantics}
-                                    onChange={(v) => setFormData(prev => ({ ...prev, color_semantics: v }))}
+                                    selected={(formData.color_semantics || '').split(/,\s*/).filter(Boolean)}
+                                    onChange={(v) => setFormData(prev => ({ ...prev, color_semantics: v.join(', ') }))}
                                     type="color"
                                     colorChips
                                 />
