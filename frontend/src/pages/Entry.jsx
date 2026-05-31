@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Upload from '../components/Upload'
 import Settings from '../components/Settings'
+import SelectableChips from '../components/SelectableChips'
 import { Save, ArrowLeft, Tag, Palette, Layers, CloudSun, FileText, Shirt, Settings as SettingsIcon, Sparkles } from 'lucide-react'
 
 import { API_BASE, toImageUrl, authFetch } from '../utils/api'
@@ -14,16 +15,23 @@ export default function Entry() {
     const [editingItem, setEditingItem] = useState(null)
     const [loading, setLoading] = useState(false)
     const [showSettings, setShowSettings] = useState(false)
+    const [options, setOptions] = useState({ styles: [], seasons: [], usages: [], colors: [], categories: [] })
     const [formData, setFormData] = useState({
         item: '',
         category: 'top',
         description: '',
         notes: '',
         color_semantics: '',
-        style_semantics: '',
-        season_semantics: '',
-        usage_semantics: ''
+        style_semantics: [],
+        season_semantics: [],
+        usage_semantics: []
     })
+
+    useEffect(() => {
+        authFetch(`${API_BASE}/wardrobe/options`).then(r => r.ok && r.json()).then(d => {
+            if (d) setOptions(d)
+        }).catch(() => {})
+    }, [])
 
     useEffect(() => {
         const editId = searchParams.get('edit')
@@ -52,9 +60,9 @@ export default function Entry() {
             description: item.description || '',
             notes: item.notes || '',
             color_semantics: item.color_semantics || '',
-            style_semantics: item.style_semantics?.join(', ') || '',
-            season_semantics: item.season_semantics?.join(', ') || '',
-            usage_semantics: item.usage_semantics?.join(', ') || ''
+            style_semantics: Array.isArray(item.style_semantics) ? item.style_semantics : [],
+            season_semantics: Array.isArray(item.season_semantics) ? item.season_semantics : [],
+            usage_semantics: Array.isArray(item.usage_semantics) ? item.usage_semantics : []
         })
     }
 
@@ -68,9 +76,6 @@ export default function Entry() {
         try {
             const payload = {
                 ...formData,
-                style_semantics: formData.style_semantics.split(/[,，]\s*/).filter(Boolean),
-                season_semantics: formData.season_semantics.split(/[,，]\s*/).filter(Boolean),
-                usage_semantics: formData.usage_semantics.split(/[,，]\s*/).filter(Boolean),
                 image_filename: editingItem.image_url.split('/').pop()
             }
 
@@ -170,43 +175,47 @@ export default function Entry() {
 
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                                    <Palette className="text-accent" size={16} /> {t('entry.color')}
+                                    <Palette className="text-accent" size={16} /> {t('wardrobeOptions.colorLabel')}
                                 </label>
-                                <input
-                                    type="text"
-                                    name="color_semantics"
-                                    value={formData.color_semantics}
-                                    onChange={handleChange}
-                                    placeholder={t('entry.colorPlaceholder')}
-                                    className="input-field"
+                                <SelectableChips
+                                    options={options.colors}
+                                    selected={formData.color_semantics}
+                                    onChange={(v) => setFormData(prev => ({ ...prev, color_semantics: v }))}
+                                    type="color"
+                                    colorChips
                                 />
                             </div>
 
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                                    <Layers className="text-accent" size={16} /> {t('entry.style')}
+                                    <Layers className="text-accent" size={16} /> {t('wardrobeOptions.styleLabel')}
                                 </label>
-                                <input
-                                    type="text"
-                                    name="style_semantics"
-                                    value={formData.style_semantics}
-                                    onChange={handleChange}
-                                    placeholder={t('entry.stylePlaceholder')}
-                                    className="input-field"
+                                <SelectableChips
+                                    options={options.styles}
+                                    selected={formData.style_semantics}
+                                    onChange={(v) => setFormData(prev => ({ ...prev, style_semantics: v }))}
                                 />
                             </div>
 
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                                    <CloudSun className="text-accent" size={16} /> {t('entry.season')}
+                                    <CloudSun className="text-accent" size={16} /> {t('wardrobeOptions.seasonLabel')}
                                 </label>
-                                <input
-                                    type="text"
-                                    name="season_semantics"
-                                    value={formData.season_semantics}
-                                    onChange={handleChange}
-                                    placeholder={t('entry.seasonPlaceholder')}
-                                    className="input-field"
+                                <SelectableChips
+                                    options={options.seasons}
+                                    selected={formData.season_semantics}
+                                    onChange={(v) => setFormData(prev => ({ ...prev, season_semantics: v }))}
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                                    <span className="text-accent text-lg leading-none">🎯</span> {t('wardrobeOptions.usageLabel')}
+                                </label>
+                                <SelectableChips
+                                    options={options.usages}
+                                    selected={formData.usage_semantics}
+                                    onChange={(v) => setFormData(prev => ({ ...prev, usage_semantics: v }))}
                                 />
                             </div>
                         </section>

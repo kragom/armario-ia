@@ -13,8 +13,34 @@ from storage.db import (
     update_clothes
 )
 from api.deps import get_current_user_id
+from pydantic import BaseModel
 
 router = APIRouter()
+
+WARDROBE_OPTIONS_CATEGORIES = ["top", "bottom", "shoes", "accessory"]
+WARDROBE_OPTIONS_STYLES = ["casual", "formal", "sporty", "elegant", "bohemian", "minimal", "vintage", "romantic", "edgy", "preppy", "business", "artistic"]
+WARDROBE_OPTIONS_SEASONS = ["primavera", "verano", "otoño", "invierno", "todas"]
+WARDROBE_OPTIONS_USAGES = ["daily", "commute", "sport", "party", "work", "travel", "home", "beach", "date", "night"]
+WARDROBE_OPTIONS_COLORS = ["negro", "blanco", "gris", "rojo", "azul", "verde", "amarillo", "rosa", "naranja", "marrón", "morado", "beige", "dorado", "plateado", "estampado"]
+
+
+class WardrobeOptionsResponse(BaseModel):
+    categories: list[str]
+    styles: list[str]
+    seasons: list[str]
+    usages: list[str]
+    colors: list[str]
+
+
+@router.get("/wardrobe/options", response_model=WardrobeOptionsResponse)
+async def get_wardrobe_options():
+    return WardrobeOptionsResponse(
+        categories=WARDROBE_OPTIONS_CATEGORIES,
+        styles=WARDROBE_OPTIONS_STYLES,
+        seasons=WARDROBE_OPTIONS_SEASONS,
+        usages=WARDROBE_OPTIONS_USAGES,
+        colors=WARDROBE_OPTIONS_COLORS,
+    )
 
 
 @router.get("/wardrobe", response_model=WardrobeResponse)

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import FilterBar from '../components/FilterBar'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Edit3 } from 'lucide-react'
 
 import { API_BASE, toImageUrl, authFetch } from '../utils/api'
 
@@ -173,16 +173,28 @@ export default function Wardrobe() {
                                         </div>
                                         <div className="p-3 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800">
                                             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate pr-2">{item.item}</span>
-                                            <button
-                                                className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-md transition-colors"
-                                                onClick={(event) => {
-                                                    event.stopPropagation()
-                                                    handleDelete(item.id)
-                                                }}
-                                                title={t('wardrobe.delete')}
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    className="text-zinc-400 hover:text-accent hover:bg-accent/10 dark:hover:bg-accent/20 p-1.5 rounded-md transition-colors"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation()
+                                                        navigate(`/entry?edit=${item.id}`)
+                                                    }}
+                                                    title={t('wardrobe.edit')}
+                                                >
+                                                    <Edit3 size={15} />
+                                                </button>
+                                                <button
+                                                    className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-md transition-colors"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation()
+                                                        handleDelete(item.id)
+                                                    }}
+                                                    title={t('wardrobe.delete')}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

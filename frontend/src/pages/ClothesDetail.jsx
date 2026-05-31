@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Edit3, Check, X } from 'lucide-react'
+import SelectableChips from '../components/SelectableChips'
 
 import { API_BASE, toImageUrl, authFetch } from '../utils/api'
 
@@ -13,9 +14,16 @@ export default function ClothesDetail() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [analyzing, setAnalyzing] = useState(false)
+    const [editing, setEditing] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const [options, setOptions] = useState({ styles: [], seasons: [], usages: [], colors: [] })
+    const [editData, setEditData] = useState({})
 
     useEffect(() => {
         fetchClothesDetail()
+        authFetch(`${API_BASE}/wardrobe/options`).then(r => r.ok && r.json()).then(d => {
+            if (d) setOptions(d)
+        }).catch(() => {})
     }, [id])
 
     const fetchClothesDetail = async () => {
@@ -52,14 +60,78 @@ export default function ClothesDetail() {
         }
     }
 
+    const startEdit = () => {
+        if (!item) return
+        setEditData({
+            style_semantics: [...(item.style_semantics || [])],
+            season_semantics: [...(item.season_semantics || [])],
+            usage_semantics: [...(item.usage_semantics || [])],
+            color_semantics: item.color_semantics || '',
+            description: item.description || '',
+            notes: item.notes || '',
+        })
+        setEditing(true)
+    }
+
+    const cancelEdit = () => {
+        setEditing(false)
+        setEditData({})
+    }
+
+    const saveInline = async () => {
+        setSaving(true)
+        try {
+            const payload = {
+                category: item.category,
+                item: item.item,
+                description: item.description || '',
+                image_filename: item.image_url.split('/').pop(),
+                ...editData,
+            }
+            const res = await authFetch(`${API_BASE}/clothes/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+            if (res.ok) {
+                setItem(await res.json())
+                setEditing(false)
+                setEditData({})
+            } else {
+                throw new Error('Save failed')
+            }
+        } catch (e) {
+            console.error('Inline save error:', e)
+        } finally {
+            setSaving(false)
+        }
+    }
+
     const isPending = item?.analysis_status === 'pending'
 
-    const renderTags = (values) => {
-        if (!Array.isArray(values) || values.length === 0) {
+    const renderTags = (values, field) => {
+        const isEmpty = !Array.isArray(values) || values.length === 0
+        if (editing && field) {
+            const chips = field === 'color_semantics'
+                ? <SelectableChips
+                    options={options.colors}
+                    selected={editData.color_semantics}
+                    onChange={(v) => setEditData(prev => ({ ...prev, color_semantics: v }))}
+                    type="color"
+                    colorChips
+                  />
+                : <SelectableChips
+                    options={options[field.replace('_semantics', 's')] || []}
+                    selected={editData[field] || []}
+                    onChange={(v) => setEditData(prev => ({ ...prev, [field]: v }))}
+                  />
+            return <div className="mt-1">{chips}</div>
+        }
+        if (isEmpty) {
             return <span className="text-sm text-zinc-400">{t('clothesDetail.empty')}</span>
         }
         return (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mt-1">
                 {values.map(value => (
                     <span key={value} className="px-2 py-1 text-xs rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                         {value}
@@ -133,7 +205,7 @@ export default function ClothesDetail() {
                 </article>
 
                 <section className="card p-4 space-y-4">
-                    {isPending && (
+                    {isPending && !editing && (
                         <div className="flex gap-2">
                             <button
                                 onClick={handleRetryAnalysis}
@@ -155,35 +227,82 @@ export default function ClothesDetail() {
                         </div>
                     )}
 
-                    <div>
+                    <div className="flex items-center justify-between">
                         <h3 className="text-sm font-medium text-zinc-500">{t('clothesDetail.description')}</h3>
-                        <p className="mt-1 text-sm text-zinc-800 dark:text-zinc-200">{item.description || t('clothesDetail.empty')}</p>
+                        {!editing && (
+                            <button onClick={startEdit} className="text-xs text-accent hover:underline flex items-center gap-1 cursor-pointer">
+                                <Edit3 size={12} /> {t('clothesDetail.editQuick')}
+                            </button>
+                        )}
                     </div>
+                    {editing ? (
+                        <textarea
+                            value={editData.description ?? item.description}
+                            onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))}
+                            rows={2}
+                            className="input-field resize-none text-sm"
+                            placeholder={t('entry.descriptionPlaceholder')}
+                        />
+                    ) : (
+                        <p className="mt-1 text-sm text-zinc-800 dark:text-zinc-200">{item.description || t('clothesDetail.empty')}</p>
+                    )}
 
                     <div>
                         <h3 className="text-sm font-medium text-zinc-500">{t('clothesDetail.notes')}</h3>
-                        <p className="mt-1 text-sm text-zinc-800 dark:text-zinc-200">{item.notes || t('clothesDetail.notesEmpty')}</p>
+                        {editing ? (
+                            <textarea
+                                value={editData.notes}
+                                onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+                                rows={2}
+                                className="input-field resize-none mt-1 text-sm"
+                                placeholder={t('entry.notesPlaceholder')}
+                            />
+                        ) : (
+                            <p className="mt-1 text-sm text-zinc-800 dark:text-zinc-200">{item.notes || t('clothesDetail.notesEmpty')}</p>
+                        )}
                     </div>
 
                     <div>
                         <h3 className="text-sm font-medium text-zinc-500">{t('clothesDetail.color')}</h3>
-                        <p className="mt-1 text-sm text-zinc-800 dark:text-zinc-200">{item.color_semantics || t('clothesDetail.empty')}</p>
+                        {renderTags(editing ? null : item.color_semantics ? [item.color_semantics] : [], editing ? 'color_semantics' : null)}
                     </div>
 
                     <div>
                         <h3 className="text-sm font-medium text-zinc-500">{t('clothesDetail.style')}</h3>
-                        <div className="mt-1">{renderTags(item.style_semantics)}</div>
+                        {renderTags(item.style_semantics, editing ? 'style_semantics' : null)}
                     </div>
 
                     <div>
                         <h3 className="text-sm font-medium text-zinc-500">{t('clothesDetail.season')}</h3>
-                        <div className="mt-1">{renderTags(item.season_semantics)}</div>
+                        {renderTags(item.season_semantics, editing ? 'season_semantics' : null)}
                     </div>
 
                     <div>
                         <h3 className="text-sm font-medium text-zinc-500">{t('clothesDetail.usage')}</h3>
-                        <div className="mt-1">{renderTags(item.usage_semantics)}</div>
+                        {renderTags(item.usage_semantics, editing ? 'usage_semantics' : null)}
                     </div>
+
+                    {editing && (
+                        <div className="flex gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                            <button
+                                onClick={saveInline}
+                                disabled={saving}
+                                className="flex-1 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer flex items-center justify-center gap-2"
+                            >
+                                {saving ? (
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <><Check size={15} /> {t('clothesDetail.saveInline')}</>
+                                )}
+                            </button>
+                            <button
+                                onClick={cancelEdit}
+                                className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-2"
+                            >
+                                <X size={15} /> Cancelar
+                            </button>
+                        </div>
+                    )}
                 </section>
             </div>
         </div>
