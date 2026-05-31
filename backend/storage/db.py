@@ -16,11 +16,10 @@ from storage.models import (
     MIGRATE_ADD_ANALYSIS_STATUS_SQL,
 )
 
-# 数据库文件路径
-# 优先使用环境变量，方便 Docker 挂载 volume
 import os
-_default_path = Path(__file__).parent.parent / "wardrobe.db"
-DB_PATH = Path(os.getenv("DB_FILE_PATH", _default_path))
+from paths import DB_PATH as _PATHS_DB_PATH
+
+DB_PATH = Path(os.getenv("DB_FILE_PATH", _PATHS_DB_PATH))
 
 
 async def init_db():
@@ -275,8 +274,8 @@ def _row_to_clothes_item(row: aiosqlite.Row) -> ClothesItem:
         description=row["description"] or "",
         notes=row["notes"] or "",
         image_url=f"/uploads/{row['image_filename']}",
-        thumbnail_url=f"/uploads/{row['image_filename_thumb']}" if row.get("image_filename_thumb") else "",
-        analysis_status=row.get("analysis_status", "completed") or "completed",
+        thumbnail_url=f"/uploads/{row['image_filename_thumb']}" if row['image_filename_thumb'] else "",
+        analysis_status=row["analysis_status"] or "completed",
         created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now()
     )
 

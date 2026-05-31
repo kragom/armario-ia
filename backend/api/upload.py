@@ -16,8 +16,8 @@ from api.deps import get_current_user_id
 
 router = APIRouter()
 
-UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
+from paths import UPLOAD_DIR as _PATHS_UPLOAD_DIR
+UPLOAD_DIR = _PATHS_UPLOAD_DIR
 
 ALLOWED_CATEGORIES = {"top", "bottom", "shoes", "accessory"}
 

@@ -25,8 +25,9 @@ from api.packing import router as packing_router
 from storage.db import init_db
 from storage.auth import init_auth_db
 
-UPLOAD_DIR = Path(__file__).parent / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
+from paths import UPLOAD_DIR as _PATHS_UPLOAD_DIR
+UPLOAD_DIR = _PATHS_UPLOAD_DIR
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ANALYZE_INTERVAL = 120  # segundos entre ciclos de análisis
 
@@ -87,7 +88,7 @@ async def auto_analyze_pending():
                         description=semantics.description,
                         notes=semantics.notes or "",
                         image_filename=image_filename,
-                        image_filename_thumb=row.get("image_filename_thumb", "") or "",
+                        image_filename_thumb=row["image_filename_thumb"] or "",
                         analysis_status="completed",
                     )
                     await update_clothes(clothes_id, updated, user_id)

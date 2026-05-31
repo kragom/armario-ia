@@ -8,7 +8,8 @@ from typing import Optional
 from domain.config import LLMConfig
 from services.weather import validate_location_input, DEFAULT_LOCATION_QUERY
 
-CONFIG_FILE = Path(__file__).parent / "llm_config.json"
+from paths import CONFIG_FILE as _PATHS_CONFIG_FILE
+CONFIG_FILE = _PATHS_CONFIG_FILE
 _CONFIG_CACHE: Optional[LLMConfig] = None
 _CONFIG_MTIME: Optional[float] = None
 
