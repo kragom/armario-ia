@@ -1,9 +1,11 @@
 """
 API de autenticación: login, registro y verificación
 """
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
+
+from api.deps import get_current_user_id
 
 from storage.auth import (
     get_user,
