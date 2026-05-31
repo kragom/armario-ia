@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Settings as SettingsIcon, RefreshCw, Sparkles, CloudSun, Droplets, Wind, Thermometer, ChevronLeft, ChevronRight, Shirt, ArrowRight } from 'lucide-react'
 import Settings from '../components/Settings'
 import { API_BASE, toImageUrl } from '../utils/api'
-const FALLBACK_LOCATION = '上海, 上海市, 中国'
+const FALLBACK_LOCATION = 'Madrid, Comunidad de Madrid, España'
 
 const formatDate = (locale) => {
     const lang = locale?.startsWith('zh')

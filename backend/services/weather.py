@@ -76,6 +76,29 @@ COMMON_CITIES = [
 
 LEGACY_CITY_BY_ID = {city["legacy_id"]: city for city in COMMON_CITIES}
 
+# Ciudades europeas como fallback
+EUROPEAN_CITIES = [
+    {"name": "Madrid", "adm1": "Comunidad de Madrid", "country": "España", "lat": "40.4168", "lon": "-3.7038", "keywords": ["madrid", "Madrid", "MADRID"]},
+    {"name": "Barcelona", "adm1": "Cataluña", "country": "España", "lat": "41.3874", "lon": "2.1686", "keywords": ["barcelona", "Barcelona"]},
+    {"name": "Valencia", "adm1": "Comunidad Valenciana", "country": "España", "lat": "39.4699", "lon": "-0.3763", "keywords": ["valencia", "Valencia"]},
+    {"name": "Sevilla", "adm1": "Andalucía", "country": "España", "lat": "37.3891", "lon": "-5.9845", "keywords": ["sevilla", "Sevilla", "seville", "Seville"]},
+    {"name": "Bilbao", "adm1": "País Vasco", "country": "España", "lat": "43.2630", "lon": "-2.9350", "keywords": ["bilbao", "Bilbao"]},
+    {"name": "Málaga", "adm1": "Andalucía", "country": "España", "lat": "36.7213", "lon": "-4.4214", "keywords": ["malaga", "Málaga", "Málaga"]},
+    {"name": "Zaragoza", "adm1": "Aragón", "country": "España", "lat": "41.6488", "lon": "-0.8891", "keywords": ["zaragoza", "Zaragoza"]},
+    {"name": "Murcia", "adm1": "Región de Murcia", "country": "España", "lat": "37.9922", "lon": "-1.1307", "keywords": ["murcia", "Murcia"]},
+    {"name": "Palma", "adm1": "Islas Baleares", "country": "España", "lat": "39.5696", "lon": "2.6502", "keywords": ["palma", "Palma", "palma de mallorca"]},
+    {"name": "Granada", "adm1": "Andalucía", "country": "España", "lat": "37.1773", "lon": "-3.5986", "keywords": ["granada", "Granada"]},
+    {"name": "Alicante", "adm1": "Comunidad Valenciana", "country": "España", "lat": "38.3452", "lon": "-0.4810", "keywords": ["alicante", "Alicante"]},
+    {"name": "Córdoba", "adm1": "Andalucía", "country": "España", "lat": "37.8882", "lon": "-4.7794", "keywords": ["cordoba", "Córdoba"]},
+    {"name": "Valladolid", "adm1": "Castilla y León", "country": "España", "lat": "41.6523", "lon": "-4.7245", "keywords": ["valladolid", "Valladolid"]},
+    {"name": "London", "adm1": "England", "country": "United Kingdom", "lat": "51.5074", "lon": "-0.1278", "keywords": ["london", "London", "Londres", "londres"]},
+    {"name": "Paris", "adm1": "Île-de-France", "country": "France", "lat": "48.8566", "lon": "2.3522", "keywords": ["paris", "Paris", "París", "parís"]},
+    {"name": "Berlin", "adm1": "Berlin", "country": "Germany", "lat": "52.5200", "lon": "13.4050", "keywords": ["berlin", "Berlin", "Berlín", "berlín"]},
+    {"name": "Rome", "adm1": "Lazio", "country": "Italy", "lat": "41.9028", "lon": "12.4964", "keywords": ["rome", "Rome", "Roma", "roma"]},
+    {"name": "Lisbon", "adm1": "Lisbon", "country": "Portugal", "lat": "38.7223", "lon": "-9.1393", "keywords": ["lisbon", "Lisbon", "Lisboa", "lisboa"]},
+    {"name": "Porto", "adm1": "Norte", "country": "Portugal", "lat": "41.1579", "lon": "-8.6291", "keywords": ["porto", "Porto", "Oporto", "oporto"]},
+]
+
 LOCATION_SUFFIXES = (
     "特别行政区", "自治区", "自治州", "地区", "盟", "省", "市", "区", "县", "都"
 )
@@ -90,7 +113,7 @@ TRADITIONAL_TO_SIMPLIFIED_MAP = str.maketrans({
     "約": "约",
 })
 NOMINATIM_USER_AGENT = "AIWardrobe/1.0 (city-search)"
-DEFAULT_LOCATION_QUERY = "上海, 上海市, 中国"
+DEFAULT_LOCATION_QUERY = "Madrid, Comunidad de Madrid, España"
 
 
 def normalize_location_query(query: str) -> str:
@@ -183,11 +206,12 @@ def is_complete_text_location(location: str) -> bool:
 
 def validate_location_input(location: str) -> Optional[str]:
     """
-    校验地点输入。返回 None 表示合法，否则返回错误文案。
+    Valida entrada de ubicación. Acepta cualquier texto no vacío.
     """
     raw_location = (location or "").strip()
     if not raw_location:
         return None
+    return None
 
     if is_location_id(raw_location) or is_coordinate_location(raw_location):
         return None
@@ -564,7 +588,8 @@ async def search_city(query: str, limit: int = 10) -> List[CityInfo]:
 
     # 回退方案：内置城市模糊匹配
     matched_cities: List[CityInfo] = []
-    for city_data in COMMON_CITIES:
+    ALL_CITIES = COMMON_CITIES + EUROPEAN_CITIES
+    for city_data in ALL_CITIES:
         keyword_matched = any(
             normalized_query in normalize_location_query(keyword)
             or normalize_location_query(keyword) in normalized_query
@@ -590,9 +615,8 @@ async def resolve_location(location: str) -> tuple[str, str]:
     """
     raw_location = (location or "").strip()
     if not raw_location:
-        shanghai = LEGACY_CITY_BY_ID["101020100"]
-        shanghai_city = _city_from_common(shanghai)
-        return format_coordinate_id(float(shanghai["lat"]), float(shanghai["lon"])), format_city_display_name(shanghai_city)
+        madrid = _city_from_common(EUROPEAN_CITIES[0])
+        return format_coordinate_id(float(EUROPEAN_CITIES[0]["lat"]), float(EUROPEAN_CITIES[0]["lon"])), format_city_display_name(madrid)
 
     validation_error = validate_location_input(raw_location)
     if validation_error:
@@ -762,18 +786,7 @@ async def get_weather(location: str = DEFAULT_LOCATION_QUERY) -> Optional[Weathe
     weather_response = await get_qweather_now(resolved_location)
 
     if not weather_response:
-        print("⚠️  使用模拟天气数据")
-        return WeatherInfo(
-            temperature=20.0,
-            feelsLike=22.0,
-            condition="晴",
-            icon="100",
-            humidity=60.0,
-            windDir="南风",
-            windScale="2",
-            location=display_location,
-            obsTime="2026-01-01T12:00",
-        )
+        return None
 
     now = weather_response.now
     return WeatherInfo(
