@@ -13,11 +13,16 @@ export function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export function authFetch(url, options = {}) {
+export async function authFetch(url, options = {}) {
   const headers = { ...options.headers, ...authHeaders() }
   const isFormData = options.body instanceof FormData
   if (!isFormData && (!options.headers || !options.headers['Content-Type'])) {
     headers['Content-Type'] = 'application/json'
   }
-  return fetch(url, { ...options, headers })
+  const res = await fetch(url, { ...options, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    window.location.href = '/login'
+  }
+  return res
 }

@@ -42,6 +42,11 @@ export function UploadProvider({ children }) {
       body: formData,
     })
 
+    if (response.status === 401) {
+      localStorage.removeItem('auth_token')
+      window.location.href = '/login'
+    }
+
     setStage('upload.analyzing', current, total)
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
