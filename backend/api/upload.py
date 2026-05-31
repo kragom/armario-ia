@@ -1,7 +1,7 @@
 """
-图片上传 API
+API de subida de imágenes con autenticación
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from pathlib import Path
 import uuid
 
@@ -11,10 +11,10 @@ from services.openai_compatible import analyze_clothes_openai
 from storage.config_store import load_config
 from domain.clothes import ClothesSemantics, ClothesCreate, ClothesItem, normalize_category_value
 from storage.db import add_clothes, get_clothes_by_id
+from api.deps import get_current_user_id
 
 router = APIRouter()
 
-# 上传目录
 UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -22,7 +22,7 @@ ALLOWED_CATEGORIES = {"top", "bottom", "shoes", "accessory"}
 
 
 @router.post("/upload", response_model=ClothesItem)
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(file: UploadFile = File(...), user_id: int = Depends(get_current_user_id)):
     """
     上传衣物图片
     
@@ -94,7 +94,7 @@ async def upload_image(file: UploadFile = File(...)):
             image_filename_thumb=thumb_filename
         )
         
-        clothes_id = await add_clothes(clothes_data)
+        clothes_id = await add_clothes(clothes_data, user_id)
         
         # 返回完整的衣物信息
         clothes = await get_clothes_by_id(clothes_id)

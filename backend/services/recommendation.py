@@ -316,12 +316,9 @@ async def get_ai_recommendation(
     weather: WeatherInfo,
     zodiac_sign: str | None = None,
     goal: str | None = None,
+    user_id: int = 1,
 ) -> dict:
-    """
-    根据天气和星座运势获取AI穿搭推荐。
-    温度约束为硬条件：衣柜单品必须满足温度策略，不满足时给出购买兜底。
-    """
-    all_clothes_items = await get_all_clothes()
+    all_clothes_items = await get_all_clothes(user_id)
     all_clothes = [
         {
             "id": item.id,

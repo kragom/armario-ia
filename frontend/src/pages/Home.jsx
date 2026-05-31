@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Settings as SettingsIcon, RefreshCw, Sparkles, CloudSun, Droplets, Wind, Thermometer, ChevronLeft, ChevronRight, Shirt, ArrowRight } from 'lucide-react'
+import { Settings as SettingsIcon, RefreshCw, Sparkles, CloudSun, Droplets, Wind, Thermometer, ChevronLeft, ChevronRight, Shirt, ArrowRight, LogOut } from 'lucide-react'
 import Settings from '../components/Settings'
-import { API_BASE, toImageUrl } from '../utils/api'
+import { useAuth } from '../contexts/AuthContext'
+import { API_BASE, toImageUrl, authFetch } from '../utils/api'
 const FALLBACK_LOCATION = 'Madrid, Comunidad de Madrid, España'
 
 const formatDate = (locale) => {
@@ -22,6 +23,7 @@ const formatDate = (locale) => {
 export default function Home() {
     const { t, i18n } = useTranslation()
     const navigate = useNavigate()
+    const { user, logout } = useAuth()
 
     const [weather, setWeather] = useState(null)
     const [wardrobe, setWardrobe] = useState({ tops: [], bottoms: [], shoes: [], accessories: [] })
@@ -55,7 +57,7 @@ export default function Home() {
 
     const fetchConfiguredLocation = async () => {
         try {
-            const response = await fetch(`${API_BASE}/config`)
+            const response = await authFetch(`${API_BASE}/config`)
             if (!response.ok) {
                 return FALLBACK_LOCATION
             }
@@ -67,7 +69,7 @@ export default function Home() {
     }
 
     const fetchHoroscope = async (location, includeInference = false) => {
-        const response = await fetch(
+        const response = await authFetch(
             `${API_BASE}/horoscope/daily?location=${encodeURIComponent(location)}&include_inference=${includeInference}`
         )
         if (!response.ok) return null
@@ -97,8 +99,8 @@ export default function Home() {
 
         try {
             const [weatherRes, wardrobeRes, horoscopeData] = await Promise.all([
-                fetch(`${API_BASE}/weather?location=${encodeURIComponent(location)}`),
-                fetch(`${API_BASE}/wardrobe`),
+                authFetch(`${API_BASE}/weather?location=${encodeURIComponent(location)}`),
+                authFetch(`${API_BASE}/wardrobe`),
                 fetchHoroscope(location, false)
             ])
 
@@ -166,7 +168,8 @@ export default function Home() {
                     <p className="text-sm text-zinc-500 mt-1">{formatDate(i18n.language)}</p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 mr-1 hidden sm:inline">{user?.display_name}</span>
                     <button
                         className="w-10 h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:text-accent transition-colors cursor-pointer"
                         onClick={() => fetchDashboard(false)}
@@ -180,6 +183,13 @@ export default function Home() {
                         title={t('settings.title')}
                     >
                         <SettingsIcon size={18} />
+                    </button>
+                    <button
+                        className="w-10 h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:text-red-500 transition-colors cursor-pointer"
+                        onClick={logout}
+                        title="Cerrar sesión"
+                    >
+                        <LogOut size={18} />
                     </button>
                 </div>
             </header>

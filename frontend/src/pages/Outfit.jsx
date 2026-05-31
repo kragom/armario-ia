@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, Shuffle } from 'lucide-react'
 
-import { API_BASE, toImageUrl } from '../utils/api'
+import { API_BASE, toImageUrl, authFetch } from '../utils/api'
 
 const OutfitPart = ({ items, label, proportion, currentIndex, onPrev, onNext, emptyText }) => {
     if (!items || items.length === 0) {
@@ -86,7 +86,7 @@ export default function Outfit() {
 
     const fetchWardrobe = async (signal) => {
         try {
-            const response = await fetch(`${API_BASE}/wardrobe`, { signal })
+            const response = await authFetch(`${API_BASE}/wardrobe`, { signal })
             if (response.ok) {
                 const data = await response.json()
                 setWardrobe({

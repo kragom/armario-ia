@@ -7,6 +7,7 @@ SQLite 数据库模型定义
 CLOTHES_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS clothes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL DEFAULT 1,
     category TEXT NOT NULL,  -- top, bottom, shoes, accessory
     item TEXT NOT NULL,
     style_semantics TEXT,  -- JSON array
@@ -24,6 +25,12 @@ CREATE TABLE IF NOT EXISTS clothes (
 # 创建索引用于快速查询
 CLOTHES_INDEX_SQL = """
 CREATE INDEX IF NOT EXISTS idx_clothes_category ON clothes(category);
+CREATE INDEX IF NOT EXISTS idx_clothes_user ON clothes(user_id);
+"""
+
+# Migración para añadir user_id a tablas existentes
+MIGRATE_ADD_USER_ID_SQL = """
+ALTER TABLE clothes ADD COLUMN user_id INTEGER DEFAULT 1;
 """
 
 # 星座运势缓存表

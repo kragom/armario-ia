@@ -17,7 +17,9 @@ from api.config import router as config_router
 from api.weather import router as weather_router
 from api.recommendation import router as recommendation_router
 from api.horoscope import router as horoscope_router
+from api.auth import router as auth_router
 from storage.db import init_db
+from storage.auth import init_auth_db
 
 # 上传目录
 UPLOAD_DIR = Path(__file__).parent / "uploads"
@@ -29,6 +31,7 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时初始化数据库
     await init_db()
+    await init_auth_db()
     print("✅ 数据库初始化完成")
     yield
     # 关闭时的清理工作（如需要）
@@ -70,6 +73,7 @@ app.include_router(wardrobe_router, prefix="/api", tags=["衣柜"])
 app.include_router(config_router, prefix="/api", tags=["配置"])
 app.include_router(weather_router, prefix="/api", tags=["天气"])
 app.include_router(recommendation_router, prefix="/api", tags=["AI推荐"])
+app.include_router(auth_router, prefix="/api", tags=["认证"])
 app.include_router(horoscope_router, prefix="/api", tags=["星座运势"])
 
 
@@ -77,9 +81,13 @@ app.include_router(horoscope_router, prefix="/api", tags=["星座运势"])
 async def api_info():
     """API 信息"""
     return {
-        "message": "👕 AI 智能衣柜 API",
+        "message": "Armario IA API",
         "docs": "/docs",
         "endpoints": {
+            "auth_login": "POST /api/auth/login",
+            "auth_register": "POST /api/auth/register",
+            "auth_check": "GET /api/auth/check",
+            "auth_logout": "POST /api/auth/logout",
             "upload": "POST /api/upload",
             "wardrobe": "GET /api/wardrobe",
             "wardrobe_by_category": "GET /api/wardrobe/{category}",

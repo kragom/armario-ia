@@ -5,7 +5,7 @@ import Upload from '../components/Upload'
 import Settings from '../components/Settings'
 import { Save, ArrowLeft, Tag, Palette, Layers, CloudSun, FileText, Shirt, Settings as SettingsIcon, Sparkles } from 'lucide-react'
 
-import { API_BASE, toImageUrl } from '../utils/api'
+import { API_BASE, toImageUrl, authFetch } from '../utils/api'
 
 export default function Entry() {
     const { t } = useTranslation()
@@ -54,7 +54,7 @@ export default function Entry() {
                 image_filename: editingItem.image_url.split('/').pop()
             }
 
-            const response = await fetch(`${API_BASE}/clothes/${editingItem.id}`, {
+            const response = await authFetch(`${API_BASE}/clothes/${editingItem.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'

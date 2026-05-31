@@ -1,7 +1,7 @@
 """
-衣柜 API - 获取和管理衣物
+API de armario - gestión de prendas por usuario
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from domain.clothes import ClothesItem, WardrobeResponse, ClothesCreate
 from domain.clothes import normalize_category_value
@@ -12,19 +12,15 @@ from storage.db import (
     delete_clothes,
     update_clothes
 )
+from api.deps import get_current_user_id
 
 router = APIRouter()
 
 
 @router.get("/wardrobe", response_model=WardrobeResponse)
-async def get_wardrobe():
-    """
-    获取整个衣柜
-    
-    按 top/bottom/shoes/accessory 四类返回所有衣物
-    """
-    all_clothes = await get_all_clothes()
-    
+async def get_wardrobe(user_id: int = Depends(get_current_user_id)):
+    all_clothes = await get_all_clothes(user_id)
+
     tops: list[ClothesItem] = []
     bottoms: list[ClothesItem] = []
     shoes: list[ClothesItem] = []
@@ -40,55 +36,39 @@ async def get_wardrobe():
             shoes.append(clothes)
         elif category == "accessory":
             accessories.append(clothes)
-    
+
     return WardrobeResponse(
-        tops=tops,
-        bottoms=bottoms,
-        shoes=shoes,
-        accessories=accessories
+        tops=tops, bottoms=bottoms, shoes=shoes, accessories=accessories
     )
 
 
 @router.get("/wardrobe/{category}", response_model=list[ClothesItem])
-async def get_wardrobe_category(category: str):
-    """
-    按类别获取衣物
-    
-    Args:
-        category: top, bottom, shoes, accessory
-    """
+async def get_wardrobe_category(category: str, user_id: int = Depends(get_current_user_id)):
     category = normalize_category_value(category)
     if category not in ["top", "bottom", "shoes", "accessory"]:
-        raise HTTPException(
-            status_code=400,
-            detail="类别必须是 top, bottom, shoes 或 accessory"
-        )
-    
-    return await get_clothes_by_category(category)
+        raise HTTPException(status_code=400, detail="Categoría debe ser top, bottom, shoes o accessory")
+    return await get_clothes_by_category(category, user_id)
 
 
 @router.get("/clothes/{clothes_id}", response_model=ClothesItem)
-async def get_clothes(clothes_id: int):
-    """获取单个衣物详情"""
-    clothes = await get_clothes_by_id(clothes_id)
+async def get_clothes(clothes_id: int, user_id: int = Depends(get_current_user_id)):
+    clothes = await get_clothes_by_id(clothes_id, user_id)
     if not clothes:
-        raise HTTPException(status_code=404, detail="衣物不存在")
+        raise HTTPException(status_code=404, detail="Prenda no encontrada")
     return clothes
 
 
 @router.put("/clothes/{clothes_id}")
-async def update_clothes_item(clothes_id: int, clothes: ClothesCreate):
-    """更新衣物信息"""
-    success = await update_clothes(clothes_id, clothes)
+async def update_clothes_item(clothes_id: int, clothes: ClothesCreate, user_id: int = Depends(get_current_user_id)):
+    success = await update_clothes(clothes_id, clothes, user_id)
     if not success:
-        raise HTTPException(status_code=404, detail="衣物不存在")
-    return {"message": "更新成功", "id": clothes_id}
+        raise HTTPException(status_code=404, detail="Prenda no encontrada")
+    return {"message": "Actualizada", "id": clothes_id}
 
 
 @router.delete("/clothes/{clothes_id}")
-async def remove_clothes(clothes_id: int):
-    """删除衣物"""
-    success = await delete_clothes(clothes_id)
+async def remove_clothes(clothes_id: int, user_id: int = Depends(get_current_user_id)):
+    success = await delete_clothes(clothes_id, user_id)
     if not success:
-        raise HTTPException(status_code=404, detail="衣物不存在")
-    return {"message": "删除成功", "id": clothes_id}
+        raise HTTPException(status_code=404, detail="Prenda no encontrada")
+    return {"message": "Eliminada", "id": clothes_id}

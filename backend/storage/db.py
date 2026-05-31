@@ -12,6 +12,7 @@ from storage.models import (
     CLOTHES_INDEX_SQL,
     HOROSCOPE_RECORDS_TABLE_SQL,
     HOROSCOPE_RECORDS_INDEX_SQL,
+    MIGRATE_ADD_USER_ID_SQL,
 )
 
 # 数据库文件路径
@@ -32,26 +33,25 @@ async def init_db():
         await db.execute(CLOTHES_INDEX_SQL)
         await db.execute(HOROSCOPE_RECORDS_TABLE_SQL)
         await db.execute(HOROSCOPE_RECORDS_INDEX_SQL)
+        try:
+            await db.execute(MIGRATE_ADD_USER_ID_SQL)
+        except Exception:
+            pass  # Columna ya existe
         await db.commit()
 
 
-async def add_clothes(clothes: ClothesCreate) -> int:
-    """
-    添加衣物到数据库
-    
-    Returns:
-        新创建的衣物 ID
-    """
+async def add_clothes(clothes: ClothesCreate, user_id: int = 1) -> int:
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             """
             INSERT INTO clothes (
-                category, item, style_semantics, season_semantics,
+                user_id, category, item, style_semantics, season_semantics,
                 usage_semantics, color_semantics, description, notes,
                 image_filename, image_filename_thumb
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 clothes.category,
                 clothes.item,
                 json.dumps(clothes.style_semantics),
@@ -68,59 +68,52 @@ async def add_clothes(clothes: ClothesCreate) -> int:
         return cursor.lastrowid
 
 
-async def get_all_clothes() -> List[ClothesItem]:
-    """获取所有衣物"""
+async def get_all_clothes(user_id: int = 1) -> List[ClothesItem]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
-            "SELECT * FROM clothes ORDER BY created_at DESC"
+            "SELECT * FROM clothes WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,)
         )
         rows = await cursor.fetchall()
-        
         return [_row_to_clothes_item(row) for row in rows]
 
 
-async def get_clothes_by_category(category: str) -> List[ClothesItem]:
-    """按类别获取衣物"""
+async def get_clothes_by_category(category: str, user_id: int = 1) -> List[ClothesItem]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
-            "SELECT * FROM clothes WHERE category = ? ORDER BY created_at DESC",
-            (category,)
+            "SELECT * FROM clothes WHERE category = ? AND user_id = ? ORDER BY created_at DESC",
+            (category, user_id)
         )
         rows = await cursor.fetchall()
-        
         return [_row_to_clothes_item(row) for row in rows]
 
 
-async def get_clothes_by_id(clothes_id: int) -> Optional[ClothesItem]:
-    """按 ID 获取衣物"""
+async def get_clothes_by_id(clothes_id: int, user_id: int = 1) -> Optional[ClothesItem]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
-            "SELECT * FROM clothes WHERE id = ?",
-            (clothes_id,)
+            "SELECT * FROM clothes WHERE id = ? AND user_id = ?",
+            (clothes_id, user_id)
         )
         row = await cursor.fetchone()
-        
         if row:
             return _row_to_clothes_item(row)
         return None
 
 
-async def delete_clothes(clothes_id: int) -> bool:
-    """删除衣物"""
+async def delete_clothes(clothes_id: int, user_id: int = 1) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
-            "DELETE FROM clothes WHERE id = ?",
-            (clothes_id,)
+            "DELETE FROM clothes WHERE id = ? AND user_id = ?",
+            (clothes_id, user_id)
         )
         await db.commit()
         return cursor.rowcount > 0
 
 
-async def update_clothes(clothes_id: int, clothes: ClothesCreate) -> bool:
-    """更新衣物信息"""
+async def update_clothes(clothes_id: int, clothes: ClothesCreate, user_id: int = 1) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             """
@@ -128,7 +121,7 @@ async def update_clothes(clothes_id: int, clothes: ClothesCreate) -> bool:
             SET category = ?, item = ?, style_semantics = ?, 
                 season_semantics = ?, usage_semantics = ?, 
                 color_semantics = ?, description = ?, notes = ?
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
             """,
             (
                 clothes.category,
@@ -139,7 +132,8 @@ async def update_clothes(clothes_id: int, clothes: ClothesCreate) -> bool:
                 clothes.color_semantics,
                 clothes.description,
                 clothes.notes or "",
-                clothes_id
+                clothes_id,
+                user_id
             )
         )
         await db.commit()

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 
-import { API_BASE, toImageUrl } from '../utils/api'
+import { API_BASE, toImageUrl, authFetch } from '../utils/api'
 
 export default function ClothesDetail() {
     const { t } = useTranslation()
@@ -21,7 +21,7 @@ export default function ClothesDetail() {
         setLoading(true)
         setError('')
         try {
-            const response = await fetch(`${API_BASE}/clothes/${id}`)
+            const response = await authFetch(`${API_BASE}/clothes/${id}`)
             if (!response.ok) {
                 throw new Error(response.status === 404 ? 'NOT_FOUND' : 'FETCH_FAILED')
             }
