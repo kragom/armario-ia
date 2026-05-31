@@ -39,3 +39,8 @@ Sube fotos de tu ropa y recibe sugerencias de outfits basadas en el clima y tu h
 - **Base de datos**: SQLite
 - **IA**: Google Gemini API (OpenAI-compatible)
 - **Imágenes**: WebP con miniaturas + rembg
+- **Despliegue**: Hugging Face Spaces (Docker)
+
+---
+
+**App en vivo**: [https://hectorpc19-armario-ia.hf.space](https://hectorpc19-armario-ia.hf.space)
