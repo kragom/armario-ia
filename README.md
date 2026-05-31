@@ -43,4 +43,4 @@ Sube fotos de tu ropa y recibe sugerencias de outfits basadas en el clima y tu h
 
 ---
 
-**App en vivo**: Disponible en Hugging Face Spaces
+**App en vivo**: [https://armarioia-armario-ia.hf.space](https://armarioia-armario-ia.hf.space)
