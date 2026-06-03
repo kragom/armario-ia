@@ -38,7 +38,7 @@ async def auto_analyze_pending():
         try:
             await asyncio.sleep(ANALYZE_INTERVAL)
 
-            from storage.db import get_all_clothes, update_clothes
+            from storage.db import get_all_clothes, update_clothes, update_clothes_analysis
             from domain.clothes import ClothesCreate, normalize_category_value
             from services.openai_compatible import analyze_clothes_openai
             from api.upload import UPLOAD_DIR, ALLOWED_CATEGORIES
@@ -67,6 +67,8 @@ async def auto_analyze_pending():
 
                 filepath = UPLOAD_DIR / image_filename
                 if not filepath.exists():
+                    await update_clothes_analysis(clothes_id, "failed", user_id)
+                    print(f"⚠️ Imagen no encontrada para prenda {clothes_id}, marcada como failed")
                     continue
 
                 with open(filepath, "rb") as f:
@@ -94,8 +96,9 @@ async def auto_analyze_pending():
                     await update_clothes(clothes_id, updated, user_id)
                     print(f"✅ Auto-análisis completado: prenda {clothes_id}")
                 except Exception as e:
-                    print(f"⏳ Auto-análisis pendiente (sin quota): {e}")
-                    break  # Si falla por quota, esperar al próximo ciclo
+                    print(f"⏳ Auto-análisis falló para prenda {clothes_id}: {e}")
+                    await update_clothes_analysis(clothes_id, "failed", user_id)
+                    print(f"⚠️ Prenda {clothes_id} marcada como failed")
 
         except asyncio.CancelledError:
             break
