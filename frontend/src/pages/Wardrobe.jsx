@@ -13,7 +13,7 @@ const itemImageUrl = (item) => {
 export default function Wardrobe() {
     const { t } = useTranslation()
     const navigate = useNavigate()
-    const [wardrobe, setWardrobe] = useState({ tops: [], bottoms: [], shoes: [], accessories: [] })
+    const [wardrobe, setWardrobe] = useState({ tops: [], bottoms: [], shoes: [], accessories: [], outerwear: [] })
     const [loading, setLoading] = useState(true)
     const [filters, setFilters] = useState({
         search: '',
@@ -36,7 +36,8 @@ export default function Wardrobe() {
                     tops: data.tops || [],
                     bottoms: data.bottoms || [],
                     shoes: data.shoes || [],
-                    accessories: data.accessories || []
+                    accessories: data.accessories || [],
+                    outerwear: data.outerwear || []
                 })
             }
         } catch (error) {
@@ -108,7 +109,8 @@ export default function Wardrobe() {
             { title: t('wardrobe.tops'), items: filterItems(wardrobe.tops) },
             { title: t('wardrobe.bottoms'), items: filterItems(wardrobe.bottoms) },
             { title: t('wardrobe.shoes'), items: filterItems(wardrobe.shoes) },
-            { title: t('wardrobe.accessories'), items: filterItems(wardrobe.accessories) }
+            { title: t('wardrobe.accessories'), items: filterItems(wardrobe.accessories) },
+            { title: t('wardrobe.outerwear'), items: filterItems(wardrobe.outerwear) }
         ]
     }, [filters.search, filters.seasons, filters.styles, t, wardrobe])
 

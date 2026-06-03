@@ -10,6 +10,13 @@ CATEGORY_ALIASES = {
     "bottom": {"bottom", "bottoms", "裤子", "下装", "裙子"},
     "shoes": {"shoes", "shoe", "鞋", "鞋子", "鞋履"},
     "accessory": {"accessory", "accessories", "饰品", "配饰", "首饰", "珠宝"},
+    "outerwear": {
+        "outerwear", "jacket", "jackets", "hoodie", "hoodies", "coat", "coats",
+        "blazer", "blazers", "cardigan", "cardigans", "bomber", "parka", "parkas",
+        "trench", "trench coat", "vest", "vests", "chaqueta", "chaquetas",
+        "sudadera", "sudaderas", "abrigo", "abrigos", "chamarra", "chamarras",
+        "cazadora", "cazadoras", "chaleco", "chalecos",
+    },
 }
 
 
@@ -72,3 +79,4 @@ class WardrobeResponse(BaseModel):
     bottoms: List[ClothesItem]
     shoes: List[ClothesItem]
     accessories: List[ClothesItem]
+    outerwear: List[ClothesItem]

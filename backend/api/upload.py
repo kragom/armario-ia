@@ -19,7 +19,7 @@ router = APIRouter()
 from paths import UPLOAD_DIR as _PATHS_UPLOAD_DIR
 UPLOAD_DIR = _PATHS_UPLOAD_DIR
 
-ALLOWED_CATEGORIES = {"top", "bottom", "shoes", "accessory"}
+ALLOWED_CATEGORIES = {"top", "bottom", "shoes", "accessory", "outerwear"}
 
 
 @router.post("/upload", response_model=ClothesItem)
@@ -44,15 +44,33 @@ async def upload_image(file: UploadFile = File(...), user_id: int = Depends(get_
         config = load_config()
         loop = asyncio.get_event_loop()
 
-        # Procesar imagen (eliminar fondo si es posible)
-        if config.bg_removal_method == "removebg" and config.removebg_api_key:
-            try:
-                processed_bytes = await remove_background_api(raw_bytes, config.removebg_api_key)
-            except Exception as e:
-                print(f"remove.bg API falló, usando local: {e}")
+        # Procesar imagen (eliminar fondo si está habilitado)
+        if getattr(config, 'bg_removal_enabled', True):
+            if config.bg_removal_method == "removebg" and config.removebg_api_key:
+                try:
+                    processed_bytes = await remove_background_api(raw_bytes, config.removebg_api_key)
+                except Exception as e:
+                    print(f"remove.bg API falló, usando local: {e}")
+                    processed_bytes = await loop.run_in_executor(None, remove_background, raw_bytes)
+            else:
                 processed_bytes = await loop.run_in_executor(None, remove_background, raw_bytes)
+
+            # Fallback automático: si rembg deja la imagen casi vacía (>90% transparente), usar la original
+            from PIL import Image as PILImage
+            import io as _io
+            try:
+                test_img = PILImage.open(_io.BytesIO(processed_bytes))
+                if test_img.mode == "RGBA":
+                    pixels = test_img.getdata()
+                    total = len(pixels)
+                    transparent = sum(1 for p in pixels if p[3] < 10)
+                    if transparent / total > 0.9:
+                        print("rembg dejó la imagen casi vacía, usando original")
+                        processed_bytes = raw_bytes
+            except Exception:
+                pass
         else:
-            processed_bytes = await loop.run_in_executor(None, remove_background, raw_bytes)
+            processed_bytes = raw_bytes
 
         filename = f"{uuid.uuid4()}.webp"
         filepath = UPLOAD_DIR / filename

@@ -11,7 +11,7 @@ Return ONLY JSON, no explanation.
 
 JSON Schema:
 {
-  "category": "top | bottom | shoes | accessory",
+  "category": "top | bottom | shoes | accessory | outerwear",
   "item": "specific clothing name, e.g. T-shirt, Jeans, Sneakers",
   "style_semantics": ["style tags, e.g. casual, formal, sport"],
   "season_semantics": ["primavera", "verano", "otoño", "invierno"],
@@ -22,6 +22,7 @@ JSON Schema:
 }
 
 When the image subject is jewelry/accessories (necklace, bracelet, hat, scarf, watch, glasses, belt), category must be "accessory".
+When the image subject is a jacket, hoodie, coat, blazer, cardigan, bomber, parka, trench coat, vest, or any type of outer layer worn over other clothing, category must be "outerwear".
 
 If unsure, fill "unknown".
 """

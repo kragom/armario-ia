@@ -76,6 +76,7 @@ def update_config(
     model: Optional[str] = None,
     removebg_api_key: Optional[str] = None,
     bg_removal_method: Optional[str] = None,
+    bg_removal_enabled: Optional[bool] = None,
     weather_location: Optional[str] = None,
     zodiac_sign: Optional[str] = None
 ) -> LLMConfig:
@@ -94,6 +95,8 @@ def update_config(
         config.removebg_api_key = removebg_api_key.strip()
     if bg_removal_method is not None:
         config.bg_removal_method = bg_removal_method
+    if bg_removal_enabled is not None:
+        config.bg_removal_enabled = bg_removal_enabled
     if weather_location is not None:
         normalized_location = weather_location.strip() or DEFAULT_LOCATION_QUERY
         validation_error = validate_location_input(normalized_location)
@@ -140,6 +143,7 @@ def get_masked_config() -> dict:
         "removebg_api_key_masked": _mask_key(config.removebg_api_key),
         "has_removebg_key": bool(config.removebg_api_key),
         "bg_removal_method": config.bg_removal_method,
+        "bg_removal_enabled": config.bg_removal_enabled,
         "weather_location": weather_location,
         "zodiac_sign": config.zodiac_sign
     }

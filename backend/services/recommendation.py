@@ -64,8 +64,9 @@ def build_temperature_profile(weather: WeatherInfo) -> dict[str, Any]:
             "allowed_seasons": {"invierno"},
             "advice": "Prioriza abrigo. Elige chaquetas gruesas, pantalones largos y calzado térmico.",
             "purchase_hints": {
-                "top": ["Chaqueta de plumas", "Jersey de lana", "Camiseta térmica"],
+                "top": ["Camiseta térmica", "Jersey de lana"],
                 "bottom": ["Pantalón térmico", "Leggins gruesos"],
+                "outerwear": ["Chaqueta de plumas", "Parka", "Abrigo de lana"],
                 "shoes": ["Botas de nieve", "Zapatos antideslizantes"],
                 "accessory": ["Bufanda", "Gorro de lana", "Guantes"],
             },
@@ -76,8 +77,9 @@ def build_temperature_profile(weather: WeatherInfo) -> dict[str, Any]:
             "allowed_seasons": {"otoño", "invierno"},
             "advice": "Superposición ligera. Chaqueta y pantalón largo como base.",
             "purchase_hints": {
-                "top": ["Chaqueta ligera", "Cárdigan", "Sudadera"],
+                "top": ["Camisa", "Jersey fino"],
                 "bottom": ["Pantalón recto", "Jeans"],
+                "outerwear": ["Chaqueta ligera", "Cárdigan", "Sudadera", "Blazer"],
                 "shoes": ["Zapatillas", "Mocasines"],
                 "accessory": ["Pañuelo", "Reloj clásico"],
             },
@@ -88,8 +90,9 @@ def build_temperature_profile(weather: WeatherInfo) -> dict[str, Any]:
             "allowed_seasons": {"primavera", "otoño"},
             "advice": "Temperatura agradable. Opta por capas ligeras y telas transpirables.",
             "purchase_hints": {
-                "top": ["Camisa", "Jersey fino", "Cazadora ligera"],
+                "top": ["Camisa", "Jersey fino"],
                 "bottom": ["Pantalón casual", "Pantalón cropped"],
+                "outerwear": ["Cazadora ligera", "Chaqueta vaquera"],
                 "shoes": ["Zapatillas blancas", "Zapatos casual"],
                 "accessory": ["Collar sencillo", "Pulsera minimalista"],
             },
@@ -102,6 +105,7 @@ def build_temperature_profile(weather: WeatherInfo) -> dict[str, Any]:
             "purchase_hints": {
                 "top": ["Camiseta manga corta", "Camisa de lino"],
                 "bottom": ["Pantalón ligero", "Shorts"],
+                "outerwear": [],
                 "shoes": ["Zapatillas transpirables", "Sandalias"],
                 "accessory": ["Gorra", "Gafas de sol"],
             },
@@ -113,6 +117,7 @@ def build_temperature_profile(weather: WeatherInfo) -> dict[str, Any]:
         "purchase_hints": {
             "top": ["Camiseta transpirable", "Top"],
             "bottom": ["Pantalón corto", "Shorts ligeros"],
+            "outerwear": [],
             "shoes": ["Sandalias", "Zapatillas de malla"],
             "accessory": ["Sombrero", "Gafas de sol"],
         },
@@ -250,6 +255,7 @@ def build_purchase_suggestion(
         "top": "Top",
         "bottom": "Bottom",
         "shoes": "Shoes",
+        "outerwear": "Outerwear",
     }
     hints = temperature_profile["purchase_hints"].get(category, [])
     zodiac_name = horoscope.get("zodiac_name", "Horóscopo de hoy")
@@ -301,7 +307,7 @@ def build_recommendation_summary(
     purchase_suggestions: list[dict],
 ) -> str:
     outfit_parts = []
-    for category in ("top", "bottom", "shoes"):
+    for category in ("top", "bottom", "shoes", "outerwear"):
         item = selected.get(category)
         if item:
             outfit_parts.append(f"{category}: {item.get('item', '未命名')}")
@@ -341,8 +347,8 @@ async def get_ai_recommendation(
     goal_raw, goal_normalized = normalize_goal(goal)
     temperature_profile = build_temperature_profile(weather)
 
-    by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": []}
-    all_by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": []}
+    by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": [], "outerwear": []}
+    all_by_category: dict[str, list[dict]] = {"top": [], "bottom": [], "shoes": [], "outerwear": []}
     normalized_categories: list[str] = []
     for item in all_clothes:
         category = normalize_category_value(str(item.get("category", "")))
@@ -357,7 +363,7 @@ async def get_ai_recommendation(
     selection_reasons: dict[str, str] = {}
     purchase_suggestions: list[dict] = []
 
-    for category in ("top", "bottom", "shoes"):
+    for category in ("top", "bottom", "shoes", "outerwear"):
         chosen, reason = pick_best_item(
             by_category[category],
             category=category,
@@ -463,6 +469,7 @@ async def get_ai_recommendation(
         "suggested_top": selected.get("top"),
         "suggested_bottom": selected.get("bottom"),
         "suggested_shoes": selected.get("shoes"),
+        "suggested_outerwear": selected.get("outerwear"),
         "suggested_accessories": suggested_accessories,
         "purchase_suggestions": purchase_suggestions,
         "goal_raw": goal_raw,
@@ -535,9 +542,10 @@ Estrategia de temperatura:
 - Consejo: {temperature_profile['advice']}
 
 Selección del armario (solo prendas que coinciden con la temperatura):
-- Superior: {item_name('top')} ({selection_reasons.get('top', 'Sin coincidencia')})
-- Inferior: {item_name('bottom')} ({selection_reasons.get('bottom', 'Sin coincidencia')})
-- Zapatos: {item_name('shoes')} ({selection_reasons.get('shoes', 'Sin coincidencia')})
+        - Superior: {item_name('top')} ({selection_reasons.get('top', 'Sin coincidencia')})
+        - Inferior: {item_name('bottom')} ({selection_reasons.get('bottom', 'Sin coincidencia')})
+        - Zapatos: {item_name('shoes')} ({selection_reasons.get('shoes', 'Sin coincidencia')})
+        - Chaqueta/Abrigo: {item_name('outerwear')} ({selection_reasons.get('outerwear', 'Sin coincidencia')})
 
 Sugerencias de compra:
 {purchase_lines}
@@ -650,8 +658,8 @@ def generate_basic_recommendation(
         "### Prendas seleccionadas del armario",
     ])
 
-    category_names = {"top": "Superior", "bottom": "Inferior", "shoes": "Zapatos"}
-    for category in ("top", "bottom", "shoes"):
+    category_names = {"top": "Superior", "bottom": "Inferior", "shoes": "Zapatos", "outerwear": "Chaqueta/Abrigo"}
+    for category in ("top", "bottom", "shoes", "outerwear"):
         item = selected.get(category)
         if item:
             lines.append(

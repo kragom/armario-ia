@@ -105,6 +105,7 @@ export function RecommendationProvider({ children }) {
         suggestedTop: data.suggested_top || null,
         suggestedBottom: data.suggested_bottom || null,
         suggestedShoes: data.suggested_shoes || null,
+        suggestedOuterwear: data.suggested_outerwear || null,
         suggestedAccessories: data.suggested_accessories || [],
         purchaseSuggestions: data.purchase_suggestions || [],
         goalRaw: data.goal_raw || '',

@@ -12,6 +12,21 @@ from domain.prompts import CLOTHES_SEMANTIC_PROMPT
 from domain.clothes import ClothesSemantics
 
 
+def _detect_mime_type(data: bytes) -> str:
+    """Detect image MIME type from magic bytes."""
+    if data[:8] == b'\x89PNG\r\n\x1a\n':
+        return "image/png"
+    if data[:3] == b'\xff\xd8\xff':
+        return "image/jpeg"
+    if data[:6] in (b'GIF87a', b'GIF89a'):
+        return "image/gif"
+    if data[:2] == b'BM':
+        return "image/bmp"
+    if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        return "image/webp"
+    return "image/png"  # fallback por defecto
+
+
 async def fetch_available_models() -> List[dict]:
     """
     获取可用模型列表
@@ -104,6 +119,7 @@ async def analyze_clothes_openai(image_bytes: bytes) -> ClothesSemantics:
     
     url = f"{api_base}/chat/completions"
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+    mime = _detect_mime_type(image_bytes)
     
     payload = {
         "model": config.model,
@@ -112,7 +128,7 @@ async def analyze_clothes_openai(image_bytes: bytes) -> ClothesSemantics:
                 "role": "user",
                 "content": [
                     {"type": "text", "text": CLOTHES_SEMANTIC_PROMPT},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_base64}"}}
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_base64}"}}
                 ]
             }
         ],

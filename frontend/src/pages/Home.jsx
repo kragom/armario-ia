@@ -26,7 +26,7 @@ export default function Home() {
     const { user, logout } = useAuth()
 
     const [weather, setWeather] = useState(null)
-    const [wardrobe, setWardrobe] = useState({ tops: [], bottoms: [], shoes: [], accessories: [] })
+    const [wardrobe, setWardrobe] = useState({ tops: [], bottoms: [], shoes: [], accessories: [], outerwear: [] })
     const [horoscope, setHoroscope] = useState(null)
     const [defaultLocation, setDefaultLocation] = useState(FALLBACK_LOCATION)
     const [loading, setLoading] = useState(true)
@@ -38,7 +38,8 @@ export default function Home() {
         ...wardrobe.tops.map(item => ({ ...item, category: 'top' })),
         ...wardrobe.bottoms.map(item => ({ ...item, category: 'bottom' })),
         ...wardrobe.shoes.map(item => ({ ...item, category: 'shoes' })),
-        ...wardrobe.accessories.map(item => ({ ...item, category: 'accessory' }))
+        ...wardrobe.accessories.map(item => ({ ...item, category: 'accessory' })),
+        ...wardrobe.outerwear.map(item => ({ ...item, category: 'outerwear' }))
     ]), [wardrobe])
 
     useEffect(() => {
@@ -97,7 +98,8 @@ export default function Home() {
                     tops: data.tops || [],
                     bottoms: data.bottoms || [],
                     shoes: data.shoes || [],
-                    accessories: data.accessories || []
+                    accessories: data.accessories || [],
+                    outerwear: data.outerwear || []
                 })
             }
 
@@ -132,6 +134,7 @@ export default function Home() {
         if (category === 'top') return t('home.categoryTop')
         if (category === 'bottom') return t('home.categoryBottom')
         if (category === 'shoes') return t('home.categoryShoes')
+        if (category === 'outerwear') return t('home.categoryOuterwear')
         return t('home.categoryAccessory')
     }
 

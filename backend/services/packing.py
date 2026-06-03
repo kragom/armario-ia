@@ -36,7 +36,7 @@ async def generate_packing_list(
     today = datetime.now()
     all_items = await get_all_clothes(user_id)
 
-    items_by_cat = {"top": [], "bottom": [], "shoes": [], "accessory": []}
+    items_by_cat = {"top": [], "bottom": [], "shoes": [], "accessory": [], "outerwear": []}
     for item in all_items:
         cat = normalize_category_value(item.category)
         if cat in items_by_cat:
@@ -95,6 +95,7 @@ async def generate_packing_list(
             items_bottom=items_by_cat["bottom"],
             items_shoes=items_by_cat["shoes"],
             items_accessory=items_by_cat["accessory"],
+            items_outerwear=items_by_cat["outerwear"],
             season=_current_season(),
             weather=weather,
         )
@@ -120,6 +121,7 @@ async def _generate_via_llm(
     items_bottom: list,
     items_shoes: list,
     items_accessory: list,
+    items_outerwear: list,
     season: str,
     weather: WeatherInfo,
 ) -> Optional[dict]:
@@ -143,6 +145,7 @@ Armario disponible:
 - Pantalones/faldas: {json.dumps([{k: v[k] for k in ('name','style','color') if k in v} for v in items_bottom], ensure_ascii=False)}
 - Zapatos: {json.dumps([{k: v[k] for k in ('name','style','color') if k in v} for v in items_shoes], ensure_ascii=False)}
 - Accesorios: {json.dumps([{k: v[k] for k in ('name','style','color') if k in v} for v in items_accessory], ensure_ascii=False)}
+- Chaquetas/abrigos: {json.dumps([{k: v[k] for k in ('name','style','color') if k in v} for v in items_outerwear], ensure_ascii=False)}
 
 Reglas:
 1. Cada día debe tener un outfit completo (top + bottom + shoes + hasta 2 accesorios)
@@ -237,7 +240,7 @@ def _generate_fallback(days, forecasts, items_by_cat, total, items_summary):
     for d in range(days):
         outfit = {"day": d + 1, "date": forecasts[d]["date"], "weather_forecast": forecasts[d]["weather"]}
 
-        for cat, key in [("top", "top"), ("bottom", "bottom"), ("shoes", "shoes")]:
+        for cat, key in [("top", "top"), ("bottom", "bottom"), ("shoes", "shoes"), ("outerwear", "outerwear")]:
             available = [i for i in item_pool.get(cat, []) if i["id"] not in used_ids]
             if available:
                 chosen = available[0]

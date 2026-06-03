@@ -22,6 +22,7 @@ export default function Recommendation() {
         suggestedTop,
         suggestedBottom,
         suggestedShoes,
+        suggestedOuterwear,
         suggestedAccessories,
         purchaseSuggestions,
         goalRaw,
@@ -369,13 +370,14 @@ export default function Recommendation() {
                         </div>
                     )}
 
-                    {(suggestedTop || suggestedBottom || suggestedShoes) && (
+                    {(suggestedTop || suggestedBottom || suggestedShoes || suggestedOuterwear) && (
                         <div className="space-y-4 pt-2">
                             <h3 className="font-serif font-bold text-zinc-900 dark:text-zinc-100 tracking-tight text-lg pl-1">{t('recommendation.suggestedCombo')}</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                                 {renderClothingCard(suggestedTop, t('recommendation.topWear'), selectionReasons?.top)}
                                 {renderClothingCard(suggestedBottom, t('recommendation.bottomWear'), selectionReasons?.bottom)}
                                 {renderClothingCard(suggestedShoes, t('recommendation.shoesWear'), selectionReasons?.shoes)}
+                                {renderClothingCard(suggestedOuterwear, t('wardrobe.outerwear'), selectionReasons?.outerwear)}
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

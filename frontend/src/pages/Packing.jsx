@@ -170,6 +170,11 @@ export default function Packing() {
                       <Shirt size={12} /> {day.shoes.name}
                     </div>
                   )}
+                  {day.outerwear && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400">
+                      <Shirt size={12} /> {day.outerwear.name}
+                    </div>
+                  )}
                 </div>
 
                 {expandedDay === day.day && day.accessories?.length > 0 && (

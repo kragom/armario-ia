@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
-WARDROBE_OPTIONS_CATEGORIES = ["top", "bottom", "shoes", "accessory"]
+WARDROBE_OPTIONS_CATEGORIES = ["top", "bottom", "shoes", "accessory", "outerwear"]
 WARDROBE_OPTIONS_STYLES = ["casual", "formal", "sporty", "elegant", "bohemian", "minimal", "vintage", "romantic", "edgy", "preppy", "business", "artistic"]
 WARDROBE_OPTIONS_SEASONS = ["primavera", "verano", "otoño", "invierno", "todas"]
 WARDROBE_OPTIONS_USAGES = ["daily", "commute", "sport", "party", "work", "travel", "home", "beach", "date", "night"]
@@ -51,6 +51,7 @@ async def get_wardrobe(user_id: int = Depends(get_current_user_id)):
     bottoms: list[ClothesItem] = []
     shoes: list[ClothesItem] = []
     accessories: list[ClothesItem] = []
+    outerwear: list[ClothesItem] = []
 
     for clothes in all_clothes:
         category = normalize_category_value(clothes.category)
@@ -62,17 +63,19 @@ async def get_wardrobe(user_id: int = Depends(get_current_user_id)):
             shoes.append(clothes)
         elif category == "accessory":
             accessories.append(clothes)
+        elif category == "outerwear":
+            outerwear.append(clothes)
 
     return WardrobeResponse(
-        tops=tops, bottoms=bottoms, shoes=shoes, accessories=accessories
+        tops=tops, bottoms=bottoms, shoes=shoes, accessories=accessories, outerwear=outerwear
     )
 
 
 @router.get("/wardrobe/{category}", response_model=list[ClothesItem])
 async def get_wardrobe_category(category: str, user_id: int = Depends(get_current_user_id)):
     category = normalize_category_value(category)
-    if category not in ["top", "bottom", "shoes", "accessory"]:
-        raise HTTPException(status_code=400, detail="Categoría debe ser top, bottom, shoes o accessory")
+    if category not in ["top", "bottom", "shoes", "accessory", "outerwear"]:
+        raise HTTPException(status_code=400, detail="Categoría debe ser top, bottom, shoes, accessory o outerwear")
     return await get_clothes_by_category(category, user_id)
 
 

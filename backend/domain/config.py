@@ -14,6 +14,7 @@ class LLMConfig(BaseModel):
     # remove.bg config
     removebg_api_key: str = ""
     bg_removal_method: Literal["local", "removebg"] = "local"
+    bg_removal_enabled: bool = True
     # Ciudad por defecto para el clima
     weather_location: str = "Madrid, Comunidad de Madrid, España"
     # Signo zodiacal del usuario
@@ -28,6 +29,7 @@ class LLMConfigUpdate(BaseModel):
     model: Optional[str] = None
     removebg_api_key: Optional[str] = None
     bg_removal_method: Optional[Literal["local", "removebg"]] = None
+    bg_removal_enabled: Optional[bool] = None
     weather_location: Optional[str] = None
     zodiac_sign: Optional[str] = None
 
