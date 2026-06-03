@@ -3,10 +3,16 @@
 文档: https://open-meteo.com/
 """
 import re
+import time
 from typing import Optional, List
 
 import httpx
 from pydantic import BaseModel
+
+
+# Cache simple en memoria para evitar rate limiting de Open-Meteo (429)
+_weather_cache: dict[str, tuple[float, object]] = {}
+WEATHER_CACHE_TTL = 300  # 5 minutos
 
 
 class CityInfo(BaseModel):
@@ -690,6 +696,12 @@ def map_weather_code(code: int, is_day: int) -> tuple[str, str]:
 
 
 async def _fetch_open_meteo_now(latitude: float, longitude: float) -> Optional[WeatherResponse]:
+    cache_key = f"{latitude:.4f},{longitude:.4f}"
+    now = time.time()
+    cached = _weather_cache.get(cache_key)
+    if cached and (now - cached[0]) < WEATHER_CACHE_TTL:
+        return cached[1]
+
     params = {
         "latitude": latitude,
         "longitude": longitude,
@@ -707,6 +719,11 @@ async def _fetch_open_meteo_now(latitude: float, longitude: float) -> Optional[W
                 params=params,
                 timeout=10.0,
             )
+            if response.status_code == 429:
+                print(f"⚠️ Open-Meteo rate limit (429), usando caché stale")
+                if cached:
+                    return cached[1]
+                return None
             response.raise_for_status()
             payload = response.json()
 
@@ -748,12 +765,14 @@ async def _fetch_open_meteo_now(latitude: float, longitude: float) -> Optional[W
             dew=str(round(float(dew), 1)) if dew is not None else None,
         )
 
-        return WeatherResponse(
+        result = WeatherResponse(
             code="200",
             updateTime=obs_time,
             fxLink="https://open-meteo.com/",
             now=now,
         )
+        _weather_cache[cache_key] = (time.time(), result)
+        return result
     except Exception as e:
         print(f"❌ 获取 Open-Meteo 天气信息失败: {e}")
         return None
